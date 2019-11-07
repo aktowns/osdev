@@ -8,8 +8,13 @@ import Language.C.Data.Position
 import Language.C.Data.Name
 
 import Data.Functor ((<&>))
+import Data.Bifunctor (first, second)
 
 data Type = TyVoid 
+          | TyInt
+          | TyChar
+          | TyString
+          | TyPtr Type
           | TyStatic Type
           | TyInline Type
           | TyConst Type
@@ -27,8 +32,11 @@ data Expr = Literal Lit
           | Binary BinaryOp Expr Expr
           deriving (Show)
 
+data BuiltinStmt = Return Expr deriving (Show)
+
 data Stmt = Assign String Node
           | Declare Type String (Maybe Expr)
+          | BuiltinS BuiltinStmt
           deriving (Show)
 
 data Node = E Expr
@@ -62,37 +70,40 @@ evalBinaryOp Add = CAddOp
 evalBinary :: BinaryOp -> Expr -> Expr -> CExpr
 evalBinary op e1 e2 = CBinary (evalBinaryOp op) (evalExpr e1) (evalExpr e2) un
 
-evalType :: Type -> [CDeclarationSpecifier NodeInfo]
-evalType TyVoid        = [CTypeSpec (CVoidType un)]
-evalType (TyInline ty) = CFunSpec (CInlineQual un) : evalType ty
-evalType (TyStatic ty) = CStorageSpec (CStatic un) : evalType ty
-evalType (TyConst ty)  = CTypeQual (CConstQual un) : evalType ty
+evalType :: Type -> ([CDeclarationSpecifier NodeInfo], [CDerivedDeclr])
+evalType TyVoid        = ([CTypeSpec (CVoidType un)], [])
+evalType TyInt         = ([CTypeSpec (CIntType un)], [])
+evalType TyChar        = ([CTypeSpec (CCharType un)], [])
+evalType (TyPtr ty)    = second (\x -> CPtrDeclr [] un : x) $ evalType ty
+evalType (TyInline ty) = first (\x -> CFunSpec (CInlineQual un) : x) $ evalType ty
+evalType (TyStatic ty) = first (\x -> CStorageSpec (CStatic un) : x) $ evalType ty
+evalType (TyConst ty)  = first (\x -> CTypeQual (CConstQual un) : x) $ evalType ty
 
 un = undefNode 
 
 mkIdent' = mkIdent nopos
 
-declare t n v = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) [] Nothing [] un), pval v, Nothing)] un
+declare t n v = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)] un
  where 
   name = mkIdent' n (Name 0)
-  typ  = evalType t
+  (typ, decs)  = evalType t
   pval val = val <&> \e -> CInitExpr e un
 
 assign n v = CBlockStmt (CExpr (Just (CAssign CAssignOp (CVar (mkIdent' n (Name 0)) un) (CConst (CIntConst (cInteger 0) un)) un)) un)
 
 func :: String -> Type -> [(String, Type)] -> [CCompoundBlockItem NodeInfo] -> CFunctionDef NodeInfo
 func name typ args body =
-  CFunDef typ' (CDeclr (Just name') args' Nothing [] un) [] (CCompound [] body un) un
+  CFunDef typ' (CDeclr (Just name') (args' ++ decs) Nothing [] un) [] (CCompound [] body un) un
  where
   name' = mkIdent' name (Name 0)
-  typ'  = evalType typ
+  (typ', decs)  = evalType typ
   args' = [CFunDeclr (Right (evalArgs args, False)) [] un]
 
 evalArgs :: [(String, Type)] -> [CDeclaration NodeInfo]
 evalArgs = map eval
  where
-   eval (n, t) = 
-     CDecl (evalType t) [(Just (CDeclr (Just (mkIdent' n (Name 0))) [] Nothing [] un), Nothing, Nothing)] un
+   eval (n, t) = let (t', d) = evalType t in
+     CDecl t' [(Just (CDeclr (Just (mkIdent' n (Name 0))) d Nothing [] un), Nothing, Nothing)] un
 
 enum :: String -> [(String, Maybe Integer)] -> CEnumeration NodeInfo
 enum name xs = 
@@ -100,6 +111,8 @@ enum name xs =
  where 
    splat (n, Just v) = (mkIdent' n (Name 1), Just (CConst $ CIntConst (cInteger v) un))
    splat (n, Nothing) = (mkIdent' n (Name 1), Nothing)
+
+app = Func "main" TyVoid [("argc", TyInt), ("argv", TyPtr (TyPtr TyChar))] []
 
 --typedef n v = 
 --  CDeclExt (CDecl [CStorageSpec (CTypedef un)] 

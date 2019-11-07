@@ -7,18 +7,18 @@ static inline vga_entry_colour(fg: VGAColour, bg: VGAColour): UInt8 = fg | bg <<
 static inline vga_entry(uc: UChar, colour: UInt8): UInt16 = uc | colour << 8
 
 strlen(str: String): Size =
-  Size len = 0
+  val len: Size = 0
   while (str[len]): len++
   len
 
-static const Size VGAWidth  = 80
-static const Size VGAHeight = 25
+static const VGAWidth: Size   = 80
+static const VGAHeight: Size = 25
 
 module Terminal:
-  Size terminalRow
-  Size terminalColumn
-  UInt8 terminalColour
-  Ptr<UInt16> terminalBuffer
+  val terminalRow: Size 
+  val terminalColumn: Size
+  val terminalColour: UInt8
+  val terminalBuffer: Ptr<UInt16>
   
   initialize: Void = 
     terminalRow    = 0
@@ -35,7 +35,7 @@ module Terminal:
     terminalColour = colour
   
   terminal_put_entry_at(c: Char, colour: UInt8, x: Size, y: Size): Void = 
-    const Size index = y * VGAWidth + x
+    const index: Size = y * VGAWidth + x
     terminalBuffer[index] = vga_entry(c, colour)
   
   terminal_put_char(c: Char): Void =
