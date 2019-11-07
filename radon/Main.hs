@@ -32,11 +32,9 @@ data Expr = Literal Lit
           | Binary BinaryOp Expr Expr
           deriving (Show)
 
-data BuiltinStmt = Return Expr deriving (Show)
-
 data Stmt = Assign String Node
           | Declare Type String (Maybe Expr)
-          | BuiltinS BuiltinStmt
+          | Return (Maybe Expr)
           deriving (Show)
 
 data Node = E Expr
@@ -59,6 +57,7 @@ evalNode = map eval
 evalStmt :: Stmt -> CBlockItem
 evalStmt (Assign n v)     = assign n v
 evalStmt (Declare t n mv) = declare t n $ mv <&> evalExpr
+evalStmt (Return e)       = CBlockStmt $ CReturn (evalExpr <$> e) un
 
 evalExpr :: Expr -> CExpr
 evalExpr (Literal (IntLiteral i)) = CConst (CIntConst (cInteger i) un)
@@ -112,7 +111,7 @@ enum name xs =
    splat (n, Just v) = (mkIdent' n (Name 1), Just (CConst $ CIntConst (cInteger v) un))
    splat (n, Nothing) = (mkIdent' n (Name 1), Nothing)
 
-app = Func "main" TyVoid [("argc", TyInt), ("argv", TyPtr (TyPtr TyChar))] []
+app = Func "main" TyVoid [("argc", TyInt), ("argv", TyPtr (TyPtr TyChar))] [S $ Return (Just $ Literal $ IntLiteral 0)]
 
 --typedef n v = 
 --  CDeclExt (CDecl [CStorageSpec (CTypedef un)] 
