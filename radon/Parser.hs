@@ -7,6 +7,7 @@ import Control.Monad (void)
 import Data.Functor ((<&>))
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Data.Void
 import Text.Megaparsec hiding (some, many)
 import Text.Megaparsec.Char
@@ -67,23 +68,6 @@ parens = between (symbol "(") (symbol ")")
 pKeyword :: Text -> Parser Text
 pKeyword keyword = lexeme (string keyword <* notFollowedBy alphaNumChar)
 
-pItem :: Parser String
-pItem = lexeme (some (alphaNumChar <|> char '(' <|> char ':' <|> char ')')) <?> "list item"
-
-pItemList :: Parser (String, [(String, [String])])
-pItemList = L.nonIndented scn (L.indentBlock scn p)
-  where
-    p = do
-      header <- pItem
-      return (L.IndentSome Nothing (return . (header, )) pComplexItem)
-
-pComplexItem :: Parser (String, [String])
-pComplexItem = L.indentBlock scn p
-  where
-    p = do
-      header <- pItem
-      return (L.IndentMany Nothing (return . (header, )) pItem)
-
 pUnaryType :: Parser Type
 pUnaryType = cIdentifier <&> \ident ->
   case ident of
@@ -106,24 +90,26 @@ pArgs :: Parser [(Text, Type)]
 pArgs = ((,) <$> (identifier <* colon) <*> pType) `sepBy` comma
 
 pFunc :: Parser TopLevel
-pFunc = do
-  name <- identifier
-  _ <- lparen
-  args <- pArgs
-  _ <- rparen
-  _ <- colon
-  typ <- pType
-  _ <- equals
-  _ <- eol
-  body <- L.indentBlock scn (return $ L.IndentSome Nothing (\x -> return $ S <$> x) pStmt)
-  return $ Func name typ args body
+pFunc = L.nonIndented scn (L.indentBlock scn preamb)
+ where 
+  preamb = do
+    name <- identifier
+    _ <- lparen
+    args <- pArgs
+    _ <- rparen
+    _ <- colon
+    typ <- pType
+    _ <- equals
+    return $ L.IndentSome Nothing (\x -> return $ Func name typ args $ S <$> x) pStmt
 
 pReturn :: Parser Stmt
 pReturn = Return <$> (symbol "return" *> optional pInteger)
 
 pStmt = pReturn
 
---main(argc: Int, argv: Ptr<Char>): Void =
---  return 0
-
-
+parseFile :: FilePath -> IO TopLevel
+parseFile fp = do 
+  out <- T.readFile fp
+  case parse (pFunc <* eof) fp out of
+    Left err -> error $ errorBundlePretty err
+    Right x -> return x

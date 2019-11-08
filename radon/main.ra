@@ -1,2 +1,2 @@
-main(argc: Int, argv: Ptr<Char>): Void =
+main(argc: Int, argv: Ptr<Char>): Int =
   return 0

@@ -7,6 +7,9 @@ import Language.C.Syntax.Constants
 import Language.C.Data.Ident
 import Language.C.Data.Position
 import Language.C.Data.Name
+import Language.C.Pretty
+
+import Text.PrettyPrint (render)
 
 import Data.Functor ((<&>))
 import Data.Bifunctor (first, second)
@@ -14,7 +17,10 @@ import Data.Bifunctor (first, second)
 import Data.Text (Text)
 import qualified Data.Text as T
 
+import System.Environment (getArgs)
+
 import AST
+import Parser
 
 evalTopLevel :: [TopLevel] -> CTranslUnit
 evalTopLevel xs = CTranslUnit (map eval xs) un
@@ -94,5 +100,16 @@ app = Func "main" TyVoid [("argc", TyInt), ("argv", TyPtr (TyPtr TyChar))] [S $ 
 --                  [] un)
 --    CDeclExt (CDecl [CStorageSpec (CTypedef),CTypeSpec (CIntType)] [(Just (CDeclr (Just (Ident "int_fast16_t" 422708096)) [] Nothing []),Nothing,Nothing)]),
 
+evalFile :: FilePath -> IO String
+evalFile fp = do
+  ast <- parseFile fp
+  return $ render $ pretty $ evalTopLevel [ast]  
+  
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = do
+  args <- getArgs 
+  res <- case length args of
+    0 -> error "filename needed"
+    n -> evalFile $ args !! 0
+  putStrLn res
+  writeFile "out.c" res 
