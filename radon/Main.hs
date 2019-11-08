@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import Language.C.Data.Node
@@ -10,36 +11,10 @@ import Language.C.Data.Name
 import Data.Functor ((<&>))
 import Data.Bifunctor (first, second)
 
-data Type = TyVoid 
-          | TyInt
-          | TyChar
-          | TyString
-          | TyPtr Type
-          | TyStatic Type
-          | TyInline Type
-          | TyConst Type
-          deriving (Show)
+import Data.Text (Text)
+import qualified Data.Text as T
 
-data BinaryOp = Add deriving Show
-
-data TopLevel = Enum String [(String, Maybe Integer)]
-              | Func String Type [(String, Type)] [Node]
-              deriving (Show)
-
-data Lit = IntLiteral Integer deriving (Show)
-
-data Expr = Literal Lit
-          | Binary BinaryOp Expr Expr
-          deriving (Show)
-
-data Stmt = Assign String Node
-          | Declare Type String (Maybe Expr)
-          | Return (Maybe Expr)
-          deriving (Show)
-
-data Node = E Expr
-          | S Stmt
-          deriving (Show)
+import AST
 
 evalTopLevel :: [TopLevel] -> CTranslUnit
 evalTopLevel xs = CTranslUnit (map eval xs) un
@@ -80,7 +55,8 @@ evalType (TyConst ty)  = first (\x -> CTypeQual (CConstQual un) : x) $ evalType 
 
 un = undefNode 
 
-mkIdent' = mkIdent nopos
+mkIdent' :: Text -> Name -> Ident
+mkIdent' x = mkIdent nopos (T.unpack x)
 
 declare t n v = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)] un
  where 
@@ -90,7 +66,7 @@ declare t n v = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [
 
 assign n v = CBlockStmt (CExpr (Just (CAssign CAssignOp (CVar (mkIdent' n (Name 0)) un) (CConst (CIntConst (cInteger 0) un)) un)) un)
 
-func :: String -> Type -> [(String, Type)] -> [CCompoundBlockItem NodeInfo] -> CFunctionDef NodeInfo
+func :: Text -> Type -> [(Text, Type)] -> [CCompoundBlockItem NodeInfo] -> CFunctionDef NodeInfo
 func name typ args body =
   CFunDef typ' (CDeclr (Just name') (args' ++ decs) Nothing [] un) [] (CCompound [] body un) un
  where
@@ -98,13 +74,13 @@ func name typ args body =
   (typ', decs)  = evalType typ
   args' = [CFunDeclr (Right (evalArgs args, False)) [] un]
 
-evalArgs :: [(String, Type)] -> [CDeclaration NodeInfo]
+evalArgs :: [(Text, Type)] -> [CDeclaration NodeInfo]
 evalArgs = map eval
  where
    eval (n, t) = let (t', d) = evalType t in
      CDecl t' [(Just (CDeclr (Just (mkIdent' n (Name 0))) d Nothing [] un), Nothing, Nothing)] un
 
-enum :: String -> [(String, Maybe Integer)] -> CEnumeration NodeInfo
+enum :: Text -> [(Text, Maybe Integer)] -> CEnumeration NodeInfo
 enum name xs = 
   CEnum (Just $ mkIdent' name (Name 0)) (Just $ map splat xs) [] un
  where 
