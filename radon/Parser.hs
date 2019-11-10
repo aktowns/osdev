@@ -45,6 +45,10 @@ rbrack   = symbol "]"
 larrow   = symbol "<-"
 rarrow   = symbol "->"
 equals   = symbol "="
+eqeq     = symbol "=="
+neq      = symbol "!="
+langleeq = symbol "<="
+rangleeq = symbol ">="
 comma    = symbol ","
 plus     = symbol "+"
 plusplus = symbol "++"
@@ -55,27 +59,52 @@ bslash   = symbol "\\"
 shiftl   = symbol "<<"
 shiftr   = symbol ">>"
 pipe     = symbol "|"
-pipeipe  = symbol "||"
-and      = symbol "&"
-andand   = symbol "&&"
+pipepipe = symbol "||"
+amp      = symbol "&"
+ampamp   = symbol "&&"
+caret    = symbol "^"
  
 kStatic  = symbol "static"
 kInline  = symbol "inline"
 kFunc    = symbol "func"
 kEnum    = symbol "enum"
 kReturn  = symbol "return"
+kVal     = symbol "val"
+kWhile   = symbol "while"
 
 table = [ [ prefix  minus    $ Unary  UnaryPrefix  Negate
           , prefix  plus     $ Unary  UnaryPrefix  Positive ]
         , [ postfix plusplus $ Unary  UnaryPostfix Increment ]
         , [ binary  star     $ Binary Mul
           , binary  fslash   $ Binary Div ]
-        , [ binary  plus     $ Binary Add 
-          , binary  minus    $ Binary Sub ] ]
+        , [ binary  plus     $ Binary Add  
+          , binary  minus    $ Binary Sub ]
+        , [ binary  shiftl   $ Binary ShiftLeft
+          , binary  shiftr   $ Binary ShiftRight ]
+        , [ binary  langle   $ Binary LessThan 
+          , binary  langleeq $ Binary LessThanEqual
+          , binary  rangle   $ Binary GreaterThan
+          , binary  rangleeq $ Binary GreaterThanEqual ]
+        , [ binary  eqeq     $ Binary Equals 
+          , binary  neq      $ Binary NotEquals ]
+        , [ binary  amp      $ Binary BitwiseAnd ]
+        , [ binary  caret    $ Binary BitwiseXor ]
+        , [ binary  pipe     $ Binary BitwiseOr ]
+        , [ binary  ampamp   $ Binary LogicalAnd ]
+        , [ binary  pipepipe $ Binary LogicalOr ]
+        ]
 
-binary  name f = InfixL  $ f <$ name
-prefix  name f = Prefix  $ f <$ name
-postfix name f = Postfix $ f <$ name
+binary :: Parser b -> (a -> a -> NodeInfo -> a) -> Operator Parser a
+binary  name f = InfixL  $ (getNI <&> niflip3 f) <* name
+ where
+  niflip3 :: (a -> b -> c -> d) -> c -> a -> b -> d
+  niflip3 f e3 e1 e2 = f e1 e2 e3
+
+prefix :: Parser b -> (a -> NodeInfo -> a) -> Operator Parser a
+prefix  name f = Prefix  $ (getNI <&> flip f) <* name
+
+postfix :: Parser b -> (a -> NodeInfo -> a) -> Operator Parser a
+postfix name f = Postfix $ (getNI <&> flip f) <* name
 
 lineComment :: Parser ()
 lineComment = L.skipLineComment "#"
@@ -160,7 +189,7 @@ pEnumBody :: Parser (Text, Maybe Integer)
 pEnumBody = (,) <$> cIdentifier <*> optional (equals *> integer)
 
 pEnum :: Parser (TopLevel NodeInfo)
-pEnum = L.nonIndented scn (L.indentBlock scn preamb)
+pEnum = L.nonIndented scn (L.indentBlock scn preamb) <?> "enum"
  where
   preamb = do
     pos <- getNI
@@ -181,7 +210,7 @@ pFuncPreamb = do
     return (pos, quals, name, args, typ)
 
 pFuncSmall :: Parser (TopLevel NodeInfo)
-pFuncSmall = L.nonIndented scn preamb
+pFuncSmall = dbg "func-small" $ L.nonIndented scn preamb
  where 
   preamb = do
     (pos, quals, name, args, typ) <- pFuncPreamb
@@ -189,14 +218,14 @@ pFuncSmall = L.nonIndented scn preamb
     return $ Func name typ args [body] pos
 
 pFuncFull :: Parser (TopLevel NodeInfo)
-pFuncFull = L.nonIndented scn (L.indentBlock scn preamb)
+pFuncFull = dbg "func-full" $ L.nonIndented scn (L.indentBlock scn preamb)
  where 
   preamb = do
     (pos, quals, name, args, typ) <- pFuncPreamb
     return $ L.IndentSome Nothing (\x -> return $ Func name typ args x pos) pFunBody
 
 pFunc :: Parser (TopLevel NodeInfo)
-pFunc = pFuncFull -- <|> pFuncSmall)
+pFunc = try pFuncSmall <|> pFuncFull
 
 pFuncCall :: Parser (Expr NodeInfo)
 pFuncCall = do
@@ -205,43 +234,58 @@ pFuncCall = do
   args <- parens $ pExpr `sepBy` comma
   return $ FunCall name args pos
 
-pExpr :: Parser (Expr NodeInfo)
-pExpr = pString 
+pTerm :: Parser (Expr NodeInfo)
+pTerm = pString 
     <|> pInteger 
-    <|> pBin 
-    <|> pFuncCall 
+    <|> try pFuncCall 
+    <|> try pArraySub
     <|> pIdentifier
+
+pExpr = makeExprParser pTerm table
 
 pIdentifier :: Parser (Expr NodeInfo)
 pIdentifier = Identifier <$> identifier <*> getNI
 
-pBinOp :: Parser BinaryOp
-pBinOp = (Add <$ plus) 
-     <|> (Sub <$ minus) 
-     <|> (Mul <$ star) 
-     <|> (Div <$ fslash)
-     <|> (BitwiseOr <$ pipe)
-     <|> (ShiftLeft <$ shiftl)
-
-pBin :: Parser (Expr NodeInfo)
-pBin = do
+pArraySub :: Parser (Expr NodeInfo)
+pArraySub = do
   pos <- getNI
-  e1 <- pExpr
-  o  <- pBinOp
-  e2 <- pExpr
-  return $ Binary o e1 e2 pos
+  ident <- identifier
+  subsc <- bracks pExpr
+  return $ ArraySub ident subsc pos
 
 pReturn :: Parser (Stmt NodeInfo)
-pReturn = Return <$> (kReturn *> optional pInteger) <*> getNI
+pReturn = Return <$> (kReturn *> optional pExpr) <*> getNI <?> "return"
+
+pDeclare :: Parser (Stmt NodeInfo)
+pDeclare = do
+  pos <- getNI
+  _ <- kVal
+  name <- identifier
+  _ <- colon
+  typ <- pType
+  _ <- equals
+  value <- optional pExpr
+  return (Declare name typ value pos) <?> "val"
+
+pWhileSmall :: Parser (Stmt NodeInfo)
+pWhileSmall = do
+  pos <- getNI
+  _ <- kWhile
+  cond <- parens pExpr
+  _ <- colon
+  body <- pStmt
+  return $ While cond [body] pos
+
+pWhile = pWhileSmall <?> "while"
 
 pStmt :: Parser (Stmt NodeInfo)
-pStmt = pReturn
+pStmt = pReturn <|> pDeclare <|> pWhile
 
 pFunBody :: Parser (Node NodeInfo)
 pFunBody = (S <$> pStmt) <|> (E <$> pExpr)
 
 pTopLevel :: Parser [TopLevel NodeInfo]
-pTopLevel = many (pEnum <|> pFunc)
+pTopLevel = many (try pEnum <|> pFunc)
 
 parseFile :: FilePath -> IO [TopLevel NodeInfo]
 parseFile fp = do 

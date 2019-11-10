@@ -19,8 +19,19 @@ data BinaryOp = Add
               | Sub
               | Mul
               | Div
+              | ShiftLeft
+              | ShiftRight
+              | LessThan 
+              | LessThanEqual
+              | GreaterThan
+              | GreaterThanEqual
+              | Equals 
+              | NotEquals
+              | BitwiseAnd
+              | BitwiseXor
               | BitwiseOr 
-              | ShiftLeft 
+              | LogicalAnd
+              | LogicalOr
               deriving Show
 
 data UnaryOp = Negate
@@ -45,11 +56,13 @@ data Expr a = Literal Lit a
             | Unary Fix UnaryOp (Expr a) a
             | Identifier Text a
             | FunCall Text [Expr a] a
+            | ArraySub Text (Expr a) a
             deriving (Show)
 
 data Stmt a = Assign Text (Node a) a
-            | Declare Type Text (Maybe (Expr a)) a
+            | Declare Text Type (Maybe (Expr a)) a
             | Return (Maybe (Expr a)) a
+            | While (Expr a) [Stmt a] a
             deriving (Show)
 
 data Node a = E (Expr a)

@@ -9,7 +9,7 @@ static inline vga_entry(uc: UChar, colour: UInt8): UInt16 = uc | colour << 8
 strlen(str: String): Size =
   val len: Size = 0
   while (str[len]): len++
-  len
+  return len
 
 static const VGAWidth: Size   = 80
 static const VGAHeight: Size = 25
