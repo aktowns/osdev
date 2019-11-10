@@ -20,6 +20,7 @@ executable radon
   main-is:             Main.hs
   other-modules:       AST
                      , Parser
+                     , PrettyC
   -- other-extensions:
   build-depends:       base >=4.13 && <4.14
                      , megaparsec
@@ -28,5 +29,7 @@ executable radon
                      , bifunctors
                      , text
                      , pretty
+                     , containers
+                     , parser-combinators
   -- hs-source-dirs:
   default-language:    Haskell2010

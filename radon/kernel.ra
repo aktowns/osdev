@@ -1,4 +1,4 @@
-enum VGAColour:
+enum VGAColour =
   Black = 0
   Blue  = 1
   Green = 2
@@ -14,7 +14,7 @@ strlen(str: String): Size =
 static const VGAWidth: Size   = 80
 static const VGAHeight: Size = 25
 
-module Terminal:
+module Terminal =
   val terminalRow: Size 
   val terminalColumn: Size
   val terminalColour: UInt8

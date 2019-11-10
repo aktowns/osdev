@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Main where
+module CodeGen where
 
 import Language.C.Data.Node
 import Language.C.Syntax.AST
@@ -7,7 +7,7 @@ import Language.C.Syntax.Constants
 import Language.C.Data.Ident
 import Language.C.Data.Position
 import Language.C.Data.Name
-import PrettyC
+import Language.C.Pretty
 
 import Text.PrettyPrint (render)
 
@@ -22,35 +22,33 @@ import System.Environment (getArgs)
 import AST
 import Parser
 
-evalTopLevel :: [TopLevel NodeInfo] -> CTranslUnit
+evalTopLevel :: [TopLevel] -> CTranslUnit
 evalTopLevel xs = CTranslUnit (map eval xs) un
  where
-  eval :: TopLevel NodeInfo -> CExternalDeclaration NodeInfo
-  eval (Enum n v ni)     = CDeclExt $ CDecl [CTypeSpec (CEnumType (enum n v) un)] [] ni
-  eval (Func n t a b ni) = CFDefExt $ func n t a (evalNode b) ni
+  eval :: TopLevel -> CExternalDeclaration NodeInfo
+  eval (Enum n v)     = CDeclExt $ CDecl [CTypeSpec (CEnumType (enum n v) un)] [] un
+  eval (Func n t a b) = CFDefExt $ func n t a $ evalNode b
 
-evalNode :: [Node NodeInfo] -> [CBlockItem]
+evalNode :: [Node] -> [CBlockItem]
 evalNode = map eval
  where
   eval (S stmt) = evalStmt stmt
   eval (E expr) = CBlockStmt $ CExpr (Just $ evalExpr expr) un
 
-evalStmt :: Stmt NodeInfo -> CBlockItem
-evalStmt (Assign n v ni)     = assign n v ni
-evalStmt (Declare t n mv ni) = declare t n (mv <&> evalExpr) ni
-evalStmt (Return e ni)       = CBlockStmt $ CReturn (evalExpr <$> e) ni
+evalStmt :: Stmt -> CBlockItem
+evalStmt (Assign n v)     = assign n v
+evalStmt (Declare t n mv) = declare t n $ mv <&> evalExpr
+evalStmt (Return e)       = CBlockStmt $ CReturn (evalExpr <$> e) un
 
-evalExpr :: Expr NodeInfo -> CExpr
-evalExpr (Literal (IntLiteral i) ni) = CConst (CIntConst (cInteger i) ni)
-evalExpr (Literal (StrLiteral s) ni) = CConst (CStrConst (cString $ T.unpack s) ni)
-evalExpr (Binary op e1 e2 ni)        = evalBinary op e1 e2 ni
-evalExpr (FunCall n a ni)            = CCall (CVar (mkIdent' n (Name 0)) un) (evalExpr <$> a) ni
+evalExpr :: Expr -> CExpr
+evalExpr (Literal (IntLiteral i)) = CConst (CIntConst (cInteger i) un)
+evalExpr (Binary op e1 e2) = evalBinary op e1 e2
  
 evalBinaryOp :: BinaryOp -> CBinaryOp
 evalBinaryOp Add = CAddOp
 
-evalBinary :: BinaryOp -> Expr NodeInfo -> Expr NodeInfo -> NodeInfo -> CExpr
-evalBinary op e1 e2 ni = CBinary (evalBinaryOp op) (evalExpr e1) (evalExpr e2) ni
+evalBinary :: BinaryOp -> Expr -> Expr -> CExpr
+evalBinary op e1 e2 = CBinary (evalBinaryOp op) (evalExpr e1) (evalExpr e2) un
 
 evalType :: Type -> ([CDeclarationSpecifier NodeInfo], [CDerivedDeclr])
 evalType TyVoid        = ([CTypeSpec (CVoidType un)], [])
@@ -66,18 +64,17 @@ un = undefNode
 mkIdent' :: Text -> Name -> Ident
 mkIdent' x = mkIdent nopos (T.unpack x)
 
-declare t n v ni = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)] ni
+declare t n v = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)] un
  where 
   name = mkIdent' n (Name 0)
   (typ, decs)  = evalType t
   pval val = val <&> \e -> CInitExpr e un
 
-assign n v ni = 
-  CBlockStmt (CExpr (Just (CAssign CAssignOp (CVar (mkIdent' n (Name 0)) un) (CConst (CIntConst (cInteger 0) un)) un)) ni)
+assign n v = CBlockStmt (CExpr (Just (CAssign CAssignOp (CVar (mkIdent' n (Name 0)) un) (CConst (CIntConst (cInteger 0) un)) un)) un)
 
-func :: Text -> Type -> [(Text, Type)] -> [CCompoundBlockItem NodeInfo] -> NodeInfo -> CFunctionDef NodeInfo
-func name typ args body ni =
-  CFunDef typ' (CDeclr (Just name') (args' ++ decs) Nothing [] ni) [] (CCompound [] body un) ni
+func :: Text -> Type -> [(Text, Type)] -> [CCompoundBlockItem NodeInfo] -> CFunctionDef NodeInfo
+func name typ args body =
+  CFunDef typ' (CDeclr (Just name') (args' ++ decs) Nothing [] un) [] (CCompound [] body un) un
  where
   name' = mkIdent' name (Name 0)
   (typ', decs)  = evalType typ
@@ -96,8 +93,6 @@ enum name xs =
    splat (n, Just v) = (mkIdent' n (Name 1), Just (CConst $ CIntConst (cInteger v) un))
    splat (n, Nothing) = (mkIdent' n (Name 1), Nothing)
 
--- app = Func "main" TyVoid [("argc", TyInt), ("argv", TyPtr (TyPtr TyChar))] [S $ Return (Just $ Literal $ IntLiteral 0)]
-
 --typedef n v = 
 --  CDeclExt (CDecl [CStorageSpec (CTypedef un)] 
 --                  [] un)
@@ -106,14 +101,5 @@ enum name xs =
 evalFile :: FilePath -> IO String
 evalFile fp = do
   ast <- parseFile fp
-  return $ render $ pretty $ evalTopLevel ast
+  return $ render $ pretty $ evalTopLevel [ast]  
   
-main :: IO ()
-main = do
-  putStrLn "radon transpiler 0.00000000000001"
-  args <- getArgs 
-  res <- case length args of
-    0 -> error "filename needed"
-    n -> evalFile $ head args
-  putStrLn res
-  writeFile "out.c" res 
