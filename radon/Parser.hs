@@ -66,6 +66,7 @@ caret    = symbol "^"
  
 kStatic  = symbol "static"
 kInline  = symbol "inline"
+kConst   = symbol "const"
 kFunc    = symbol "func"
 kEnum    = symbol "enum"
 kReturn  = symbol "return"
@@ -210,7 +211,7 @@ pFuncPreamb = do
     return (pos, quals, name, args, typ)
 
 pFuncSmall :: Parser (TopLevel NodeInfo)
-pFuncSmall = dbg "func-small" $ L.nonIndented scn preamb
+pFuncSmall = L.nonIndented scn preamb
  where 
   preamb = do
     (pos, quals, name, args, typ) <- pFuncPreamb
@@ -218,7 +219,7 @@ pFuncSmall = dbg "func-small" $ L.nonIndented scn preamb
     return $ Func name typ args [body] pos
 
 pFuncFull :: Parser (TopLevel NodeInfo)
-pFuncFull = dbg "func-full" $ L.nonIndented scn (L.indentBlock scn preamb)
+pFuncFull = L.nonIndented scn (L.indentBlock scn preamb)
  where 
   preamb = do
     (pos, quals, name, args, typ) <- pFuncPreamb
@@ -259,6 +260,7 @@ pReturn = Return <$> (kReturn *> optional pExpr) <*> getNI <?> "return"
 pDeclare :: Parser (Stmt NodeInfo)
 pDeclare = do
   pos <- getNI
+  quals <- many (kStatic <|> kInline)
   _ <- kVal
   name <- identifier
   _ <- colon
@@ -278,14 +280,30 @@ pWhileSmall = do
 
 pWhile = pWhileSmall <?> "while"
 
+pStmtExpr :: Parser (Stmt NodeInfo)
+pStmtExpr = SExpr <$> pExpr <*> getNI
+
 pStmt :: Parser (Stmt NodeInfo)
-pStmt = pReturn <|> pDeclare <|> pWhile
+pStmt = pReturn <|> pDeclare <|> pWhile <|> pStmtExpr
 
 pFunBody :: Parser (Node NodeInfo)
 pFunBody = (S <$> pStmt) <|> (E <$> pExpr)
 
+pDecl :: Parser (TopLevel NodeInfo)
+pDecl = do
+  pos <- getNI
+  quals <- many (kStatic <|> kConst)
+  _ <- kVal
+  name <- cIdentifier
+  _ <- colon
+  typ <- pType
+  _ <- equals
+  value <- optional $ dbg "value" pExpr
+  _ <- eol
+  return (Decl name typ value pos) <?> "val"
+
 pTopLevel :: Parser [TopLevel NodeInfo]
-pTopLevel = many (try pEnum <|> pFunc)
+pTopLevel = many (try pEnum <|> try pFunc <|> pDecl)
 
 parseFile :: FilePath -> IO [TopLevel NodeInfo]
 parseFile fp = do 

@@ -45,6 +45,7 @@ data Fix = UnaryPrefix
 
 data TopLevel a = Enum Text [(Text, Maybe Integer)] a
                 | Func Text Type [(Text, Type)] [Node a] a
+                | Decl Text Type (Maybe (Expr a)) a
                 deriving (Show)
 
 data Lit = IntLiteral Integer 
@@ -63,6 +64,7 @@ data Stmt a = Assign Text (Node a) a
             | Declare Text Type (Maybe (Expr a)) a
             | Return (Maybe (Expr a)) a
             | While (Expr a) [Stmt a] a
+            | SExpr (Expr a) a
             deriving (Show)
 
 data Node a = E (Expr a)

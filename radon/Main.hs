@@ -40,16 +40,18 @@ evalStmt (Assign n v ni)     = assign n v ni
 evalStmt (Declare n t mv ni) = declare t n (mv <&> evalExpr) ni
 evalStmt (Return e ni)       = CBlockStmt $ CReturn (evalExpr <$> e) ni
 evalStmt (While c b ni)      = CBlockStmt $ CWhile (evalExpr c) (CCompound [] (map evalStmt b) ni) False ni
-evalStmt x = error $ "unhandled " ++ show x
+evalStmt (SExpr e ni)        = CBlockStmt $ CExpr (Just $ evalExpr e) ni
+evalStmt x                   = error $ "unhandled " ++ show x
 
 evalExpr :: Expr NodeInfo -> CExpr
-evalExpr (Literal (IntLiteral i) ni) = CConst (CIntConst (cInteger i) ni)
-evalExpr (Literal (StrLiteral s) ni) = CConst (CStrConst (cString $ T.unpack s) ni)
-evalExpr (Binary op e1 e2 ni)        = evalBinary op e1 e2 ni
-evalExpr (FunCall n a ni)            = CCall (CVar (mkIdent' n (Name 0)) un) (evalExpr <$> a) ni
-evalExpr (Identifier n ni)           = CVar (mkIdent' n (Name 0)) ni
-evalExpr (ArraySub n e ni)           = CIndex (CVar (mkIdent' n (Name 0)) ni) (evalExpr e) ni
-evalExpr x = error $ "unhandled " ++ show x
+evalExpr (Literal (IntLiteral i) ni)         = CConst (CIntConst (cInteger i) ni)
+evalExpr (Literal (StrLiteral s) ni)         = CConst (CStrConst (cString $ T.unpack s) ni)
+evalExpr (Binary op e1 e2 ni)                = evalBinary op e1 e2 ni
+evalExpr (FunCall n a ni)                    = CCall (CVar (mkIdent' n (Name 0)) un) (evalExpr <$> a) ni
+evalExpr (Identifier n ni)                   = CVar (mkIdent' n (Name 0)) ni
+evalExpr (ArraySub n e ni)                   = CIndex (CVar (mkIdent' n (Name 0)) ni) (evalExpr e) ni
+evalExpr (Unary UnaryPostfix Increment e ni) = CUnary CPostIncOp (evalExpr e) ni
+evalExpr x                                   = error $ "unhandled " ++ show x
  
 evalBinaryOp :: BinaryOp -> CBinaryOp
 evalBinaryOp Add = CAddOp

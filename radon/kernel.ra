@@ -11,8 +11,8 @@ strlen(str: String): Size =
   while (str[len]): len++
   return len
 
-static const VGAWidth: Size   = 80
-static const VGAHeight: Size = 25
+static const val VGAWidth: Size  = 80
+static const val VGAHeight: Size = 25
 
 module Terminal =
   val terminalRow: Size 
