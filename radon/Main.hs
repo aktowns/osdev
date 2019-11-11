@@ -22,12 +22,19 @@ import System.Environment (getArgs)
 import AST
 import Parser
 
+initExpr v = v <&> \e -> CInitExpr (evalExpr e) un
+
 evalTopLevel :: [TopLevel NodeInfo] -> CTranslUnit
-evalTopLevel xs = CTranslUnit (map eval xs) un
+evalTopLevel xs = CTranslUnit (xs >>= eval) un
  where
-  eval :: TopLevel NodeInfo -> CExternalDeclaration NodeInfo
-  eval (Enum n v ni)     = CDeclExt $ CDecl [CTypeSpec (CEnumType (enum n v) un)] [] ni
-  eval (Func n t a b ni) = CFDefExt $ func n t a (evalNode b) ni
+  eval :: TopLevel NodeInfo -> [CExternalDeclaration NodeInfo]
+  eval (Enum n v ni)        = [CDeclExt $ CDecl [CTypeSpec (CEnumType (enum n v) un)] [] ni]
+  eval (Func n t a b ni)    = [CFDefExt $ func n t a (evalNode b) ni]
+  eval (Decl n t me ni)     = let (typ, decs) = evalType t
+                                  name = mkIdent' n (Name 0)
+                              in
+    [CDeclExt $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), initExpr me, Nothing)] ni]
+  eval (Module name tls ni) = tls >>= eval -- TODO: Actually namespace the stuff
 
 evalNode :: [Node NodeInfo] -> [CBlockItem]
 evalNode = map eval

@@ -15,10 +15,10 @@ static const val VGAWidth: Size  = 80
 static const val VGAHeight: Size = 25
 
 module Terminal =
-  val terminalRow: Size 
-  val terminalColumn: Size
-  val terminalColour: UInt8
-  val terminalBuffer: Ptr<UInt16>
+  val TerminalRow: Size 
+  val TerminalColumn: Size
+  val TerminalColour: UInt8
+  val TerminalBuffer: Ptr<UInt16>
   
   initialize: Void = 
     terminalRow    = 0

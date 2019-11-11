@@ -72,6 +72,7 @@ kEnum    = symbol "enum"
 kReturn  = symbol "return"
 kVal     = symbol "val"
 kWhile   = symbol "while"
+kModule  = symbol "module"
 
 table = [ [ prefix  minus    $ Unary  UnaryPrefix  Negate
           , prefix  plus     $ Unary  UnaryPrefix  Positive ]
@@ -293,17 +294,24 @@ pDecl :: Parser (TopLevel NodeInfo)
 pDecl = do
   pos <- getNI
   quals <- many (kStatic <|> kConst)
-  _ <- kVal
-  name <- cIdentifier
-  _ <- colon
+  name <- kVal *> cIdentifier <* colon
   typ <- pType
-  _ <- equals
-  value <- optional $ dbg "value" pExpr
-  _ <- eol
+  value <- optional $ equals *> pExpr <* eol
   return (Decl name typ value pos) <?> "val"
 
+pModule :: Parser (TopLevel NodeInfo)
+pModule = dbg "module" $ L.nonIndented scn (L.indentBlock scn preamb)
+ where 
+  preamb = do
+    pos <- getNI
+    name <- kModule *> cIdentifier <* equals
+    return $ L.IndentSome Nothing (\x -> return $ Module name x pos) pTopLevelEntry
+
+pTopLevelEntry :: Parser (TopLevel NodeInfo)
+pTopLevelEntry = try pEnum <|> try pFunc <|> try pModule <|> pDecl
+
 pTopLevel :: Parser [TopLevel NodeInfo]
-pTopLevel = many (try pEnum <|> try pFunc <|> pDecl)
+pTopLevel = many pTopLevelEntry
 
 parseFile :: FilePath -> IO [TopLevel NodeInfo]
 parseFile fp = do 
