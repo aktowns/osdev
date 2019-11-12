@@ -29,25 +29,19 @@ evalTopLevel xs = CTranslUnit (xs >>= eval) un
  where
   eval :: TopLevel NodeInfo -> [CExternalDeclaration NodeInfo]
   eval (Enum n v ni)        = [CDeclExt $ CDecl [CTypeSpec (CEnumType (enum n v) un)] [] ni]
-  eval (Func n t a b ni)    = [CFDefExt $ func n t a (evalNode b) ni]
+  eval (Func n t a b ni)    = [CFDefExt $ func n t a (map evalStmt b) ni]
   eval (Decl n t me ni)     = let (typ, decs) = evalType t
                                   name = mkIdent' n (Name 0)
                               in
     [CDeclExt $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), initExpr me, Nothing)] ni]
   eval (Module name tls ni) = tls >>= eval -- TODO: Actually namespace the stuff
 
-evalNode :: [Node NodeInfo] -> [CBlockItem]
-evalNode = map eval
- where
-  eval (S stmt) = evalStmt stmt
-  eval (E expr) = CBlockStmt $ CExpr (Just $ evalExpr expr) un
-
 evalStmt :: Stmt NodeInfo -> CBlockItem
-evalStmt (Assign n v ni)     = assign n v ni
 evalStmt (Declare n t mv ni) = declare t n (mv <&> evalExpr) ni
 evalStmt (Return e ni)       = CBlockStmt $ CReturn (evalExpr <$> e) ni
 evalStmt (While c b ni)      = CBlockStmt $ CWhile (evalExpr c) (CCompound [] (map evalStmt b) ni) False ni
 evalStmt (SExpr e ni)        = CBlockStmt $ CExpr (Just $ evalExpr e) ni
+evalStmt (For i c f b ni)    = CBlockStmt $ CFor (Left Nothing) (Just $ evalExpr c) (Just $ evalExpr f) (CCompound [] (map evalStmt b) ni) ni
 evalStmt x                   = error $ "unhandled " ++ show x
 
 evalExpr :: Expr NodeInfo -> CExpr
@@ -58,6 +52,7 @@ evalExpr (FunCall n a ni)                    = CCall (CVar (mkIdent' n (Name 0))
 evalExpr (Identifier n ni)                   = CVar (mkIdent' n (Name 0)) ni
 evalExpr (ArraySub n e ni)                   = CIndex (CVar (mkIdent' n (Name 0)) ni) (evalExpr e) ni
 evalExpr (Unary UnaryPostfix Increment e ni) = CUnary CPostIncOp (evalExpr e) ni
+evalExpr (Assign n v ni)                     = assign n v ni
 evalExpr x                                   = error $ "unhandled " ++ show x
  
 evalBinaryOp :: BinaryOp -> CBinaryOp
@@ -96,7 +91,7 @@ declare t n v ni = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothin
   pval val = val <&> \e -> CInitExpr e un
 
 assign n v ni = 
-  CBlockStmt (CExpr (Just (CAssign CAssignOp (CVar (mkIdent' n (Name 0)) un) (CConst (CIntConst (cInteger 0) un)) un)) ni)
+  CAssign CAssignOp (evalExpr n) (CConst (CIntConst (cInteger 0) un)) ni
 
 func :: Text -> Type -> [(Text, Type)] -> [CCompoundBlockItem NodeInfo] -> NodeInfo -> CFunctionDef NodeInfo
 func name typ args body ni =

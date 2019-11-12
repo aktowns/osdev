@@ -44,13 +44,14 @@ data Fix = UnaryPrefix
          deriving (Show)
 
 data TopLevel a = Enum Text [(Text, Maybe Integer)] a
-                | Func Text Type [(Text, Type)] [Node a] a
+                | Func Text Type [(Text, Type)] [Stmt a] a
                 | Decl Text Type (Maybe (Expr a)) a
                 | Module Text [TopLevel a] a
                 deriving (Show)
 
 data Lit = IntLiteral Integer 
          | StrLiteral Text
+         | CharLiteral Char
          deriving (Show)
 
 data Expr a = Literal Lit a
@@ -59,28 +60,15 @@ data Expr a = Literal Lit a
             | Identifier Text a
             | FunCall Text [Expr a] a
             | ArraySub Text (Expr a) a
+            | Assign (Expr a) (Expr a) a
             deriving (Show)
 
-data Stmt a = Assign Text (Node a) a
-            | Declare Text Type (Maybe (Expr a)) a
+data Stmt a = Declare Text Type (Maybe (Expr a)) a
             | Return (Maybe (Expr a)) a
             | While (Expr a) [Stmt a] a
+            | For (Stmt a) (Expr a) (Expr a) [Stmt a] a
             | SExpr (Expr a) a
             deriving (Show)
-
-data Node a = E (Expr a)
-            | S (Stmt a)
-            deriving (Show)
-
-instance Functor Node where
-  fmap f (E expr) = E $ f <$> expr
-  fmap f (S stmt) = S $ f <$> stmt
-
-instance Annotated Node where
-  annotation (E expr) = annotation expr
-  annotation (S stmt) = annotation stmt
-  amap f (E expr)     = E $ amap f expr
-  amap f (S stmt)     = S $ amap f stmt
 
 instance Functor TopLevel where
   fmap f (Enum a1 a2 a3) = Enum a1 a2 (f a3)
@@ -94,18 +82,18 @@ instance Functor Expr where
   fmap f (Literal a1 a2) = Literal a1 (f a2)
   fmap f (Binary a1 a2 a3 a4) = Binary a1 (fmap f a2) (fmap f a3) (f a4) 
   fmap f (FunCall a1 a2 a3) = FunCall a1 (fmap f <$> a2) (f a3) 
+  fmap f (Assign a1 a2 a3)     = Assign (fmap f a1) (fmap f a2) (f a3)
 
 instance Annotated Expr where
   annotation (Literal _ n)    = n
   annotation (Binary _ _ _ n) = n
   annotation (FunCall _ _ n)  = n
+  annotation (Assign _ _ n)   = n
 
 instance Functor Stmt where
-  fmap f (Assign a1 a2 a3)     = Assign a1 (fmap f a2) (f a3)
   fmap f (Declare a1 a2 a3 a4) = Declare a1 a2 ((fmap . fmap) f a3) (f a4) 
   fmap f (Return a1 a2)        = Return ((fmap . fmap) f a1) (f a2)
 
 instance Annotated Stmt where
-  annotation (Assign _ _ n)    = n
   annotation (Declare _ _ _ n) = n
   annotation (Return _ n)      = n

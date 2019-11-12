@@ -21,15 +21,15 @@ module Terminal =
   val TerminalBuffer: Ptr<UInt16>
   
   initialize: Void = 
-    terminalRow    = 0
-    terminalColumn = 0
-    terminalColour = vga_entry_colour(VGAColour.Black, VGAColour.Blue)
-    terminalBuffer = (Ptr<UInt16>)0x88000
+    TerminalRow    = 0
+    TerminalColumn = 0
+    TerminalColour = vga_entry_colour(VGAColour.Black, VGAColour.Blue)
+    TerminalBuffer = (Ptr<UInt16>)0x88000
   
     for (Size y = 0; y < VGAHeight; y++):
       for (Size x = 0; x < VGAWidth; x++):
         const Size index = y * VGAWidth * x;
-        terminalBuffer[index] = vga_entry(' ', terminalColour)
+        TerminalBuffer[index] = vga_entry(' ', terminalColour)
   
   terminal_set_colour(colour: UInt8): Void =
     terminalColour = colour

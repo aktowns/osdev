@@ -16,6 +16,8 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Debug
 import qualified Text.Megaparsec.Char.Lexer as L
 
+import Data.Maybe (fromMaybe)
+
 import Control.Monad.Combinators.Expr
 
 import AST
@@ -72,6 +74,7 @@ kEnum    = symbol "enum"
 kReturn  = symbol "return"
 kVal     = symbol "val"
 kWhile   = symbol "while"
+kFor     = symbol "for"
 kModule  = symbol "module"
 
 table = [ [ prefix  minus    $ Unary  UnaryPrefix  Negate
@@ -152,6 +155,9 @@ pInteger = Literal . IntLiteral <$> lexeme L.decimal <*> getNI
 pString :: Parser (Expr NodeInfo)
 pString = Literal . StrLiteral <$> stringLiteral' <*> getNI
 
+pChar :: Parser (Expr NodeInfo)
+pChar = Literal . CharLiteral <$> charLiteral <*> getNI
+
 parens :: Parser a -> Parser a
 parens = between lparen rparen
 
@@ -205,26 +211,26 @@ pFuncPreamb = do
     pos <- getNI
     quals <- many (kStatic <|> kInline)
     name <- identifier
-    args <- parens pArgs
+    args <- optional $ parens pArgs
     _ <- colon
     typ <- pType
     _ <- equals
-    return (pos, quals, name, args, typ)
+    return (pos, quals, name, fromMaybe [] args, typ)
 
 pFuncSmall :: Parser (TopLevel NodeInfo)
 pFuncSmall = L.nonIndented scn preamb
  where 
   preamb = do
     (pos, quals, name, args, typ) <- pFuncPreamb
-    body <- pFunBody
+    body <- pStmt
     return $ Func name typ args [body] pos
 
 pFuncFull :: Parser (TopLevel NodeInfo)
-pFuncFull = L.nonIndented scn (L.indentBlock scn preamb)
+pFuncFull = L.indentBlock scn preamb
  where 
   preamb = do
     (pos, quals, name, args, typ) <- pFuncPreamb
-    return $ L.IndentSome Nothing (\x -> return $ Func name typ args x pos) pFunBody
+    return $ L.IndentSome Nothing (\x -> return $ Func name typ args x pos) pStmt
 
 pFunc :: Parser (TopLevel NodeInfo)
 pFunc = try pFuncSmall <|> pFuncFull
@@ -239,19 +245,25 @@ pFuncCall = do
 pTerm :: Parser (Expr NodeInfo)
 pTerm = pString 
     <|> pInteger 
+    <|> pChar
+    <|> try pAssign
     <|> try pFuncCall 
     <|> try pArraySub
     <|> pIdentifier
+    <|> pCIdentifier
 
-pExpr = makeExprParser pTerm table
+pExpr = dbg "expr" $ makeExprParser pTerm table
 
 pIdentifier :: Parser (Expr NodeInfo)
 pIdentifier = Identifier <$> identifier <*> getNI
 
+pCIdentifier :: Parser (Expr NodeInfo)
+pCIdentifier = Identifier <$> cIdentifier <*> getNI
+
 pArraySub :: Parser (Expr NodeInfo)
 pArraySub = do
   pos <- getNI
-  ident <- identifier
+  ident <- (identifier <|> cIdentifier)
   subsc <- bracks pExpr
   return $ ArraySub ident subsc pos
 
@@ -261,7 +273,7 @@ pReturn = Return <$> (kReturn *> optional pExpr) <*> getNI <?> "return"
 pDeclare :: Parser (Stmt NodeInfo)
 pDeclare = do
   pos <- getNI
-  quals <- many (kStatic <|> kInline)
+  quals <- many (kStatic <|> kInline <|> kConst)
   _ <- kVal
   name <- identifier
   _ <- colon
@@ -281,14 +293,34 @@ pWhileSmall = do
 
 pWhile = pWhileSmall <?> "while"
 
+pForPreamb :: Parser (NodeInfo, Stmt NodeInfo, Expr NodeInfo, Expr NodeInfo)
+pForPreamb = do
+  pos <- getNI
+  _ <- kFor
+  _ <- lparen
+  init <- pStmt
+  _ <- semi
+  cond <- pExpr
+  _ <- semi
+  fin  <- pExpr
+  _ <- rparen
+  _ <- colon
+  return $ (pos, init, cond, fin)
+
+pForFull :: Parser (Stmt NodeInfo)
+pForFull = L.indentBlock scn preamb
+ where 
+  preamb = do
+    (pos, init, cond, fin) <- pForPreamb
+    return $ L.IndentSome Nothing (\x -> return $ For init cond fin x pos) pStmt
+
+pFor = dbg "for" $ pForFull
+
 pStmtExpr :: Parser (Stmt NodeInfo)
 pStmtExpr = SExpr <$> pExpr <*> getNI
 
 pStmt :: Parser (Stmt NodeInfo)
-pStmt = pReturn <|> pDeclare <|> pWhile <|> pStmtExpr
-
-pFunBody :: Parser (Node NodeInfo)
-pFunBody = (S <$> pStmt) <|> (E <$> pExpr)
+pStmt = pReturn <|> pDeclare <|> pWhile <|> pFor <|> pStmtExpr
 
 pDecl :: Parser (TopLevel NodeInfo)
 pDecl = do
@@ -300,7 +332,7 @@ pDecl = do
   return (Decl name typ value pos) <?> "val"
 
 pModule :: Parser (TopLevel NodeInfo)
-pModule = dbg "module" $ L.nonIndented scn (L.indentBlock scn preamb)
+pModule = L.nonIndented scn (L.indentBlock scn preamb)
  where 
   preamb = do
     pos <- getNI
@@ -312,6 +344,14 @@ pTopLevelEntry = try pEnum <|> try pFunc <|> try pModule <|> pDecl
 
 pTopLevel :: Parser [TopLevel NodeInfo]
 pTopLevel = many pTopLevelEntry
+
+pAssign :: Parser (Expr NodeInfo)
+pAssign = do
+  pos <- getNI
+  left <- (pArraySub <|> pIdentifier <|> pCIdentifier)
+  _ <- equals
+  right <- pExpr
+  return $ Assign left right pos
 
 parseFile :: FilePath -> IO [TopLevel NodeInfo]
 parseFile fp = do 
