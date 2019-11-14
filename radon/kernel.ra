@@ -26,30 +26,30 @@ module Terminal =
     TerminalColour = vga_entry_colour(VGAColour.Black, VGAColour.Blue)
     TerminalBuffer = (Ptr<UInt16>)0x88000
   
-    for (Size y = 0; y < VGAHeight; y++):
-      for (Size x = 0; x < VGAWidth; x++):
-        const Size index = y * VGAWidth * x;
+    for (val y: Size = 0; y < VGAHeight; y++):
+      for (val x: Size = 0; x < VGAWidth; x++):
+        const Size index = y * VGAWidth * x
         TerminalBuffer[index] = vga_entry(' ', terminalColour)
   
   terminal_set_colour(colour: UInt8): Void =
-    terminalColour = colour
+    TerminalColour = colour
   
   terminal_put_entry_at(c: Char, colour: UInt8, x: Size, y: Size): Void = 
-    const index: Size = y * VGAWidth + x
-    terminalBuffer[index] = vga_entry(c, colour)
+    const val index: Size = y * VGAWidth + x
+    TerminalBuffer[index] = vga_entry(c, colour)
   
   terminal_put_char(c: Char): Void =
     terminal_put_entry_at(c, terminalColour, terminalColumn, temrinalRow)
     if (++terminalColumn == VGAWidth):
-      terminalColumn = 0
+      TerminalColumn = 0
       if (++terminalRow == VGAHeight):
-        terminalRow = 0
+        TerminalRow = 0
   
   terminal_write(data: const String, size: Size): Void = 
-    for (Size i = 0; i < size; i++): terminal_put_char(data[i])
+    for (val i: Size = 0; i < size; i++): terminal_put_char(data[i])
   
   terminal_write_string(data: const String): Void = terminal_write(data, strlen(data))
 
 kernel_main: Void = 
   terminal_initialize
-  terminal_write_string("Hello, World!\n");
+  terminal_write_string("Hello, World!\n")

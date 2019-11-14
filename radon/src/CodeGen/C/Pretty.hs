@@ -12,12 +12,13 @@
 -- This module provides a pretty printer for the parse tree
 -- ('Language.C.Syntax.AST').
 -----------------------------------------------------------------------------
-module PrettyC (
+module CodeGen.C.Pretty (
     -- * Pretty Printing
     Pretty (..),
     -- * Testing
     prettyUsingInclude
 ) where
+
 import Data.List (isSuffixOf)
 import qualified Data.Set as Set
 import Text.PrettyPrint.HughesPJ
@@ -126,13 +127,13 @@ instance Pretty CStat where
                         <+> pretty expr2 <> text ":" $$ pretty stat
         pretty' (CDefault stat _) = text "default:" $$ pretty stat
         pretty' (CExpr expr _) = ii $ maybeP pretty expr <> semi
-        pretty' c@(CCompound _ _ _) = prettyPrec 0 c
+        pretty' c@CCompound {} = prettyPrec 0 c
         pretty' (CIf expr stat estat _) =
             ii $  text "if" <+> parens (pretty expr)
                     $+$ prettyBody stat
                     $$  maybeP prettyElse estat
           where
-            prettyBody c@(CCompound _ _ _) = prettyPrec (-1) c
+            prettyBody c@CCompound {} = prettyPrec (-1) c
             prettyBody nonCompound         = prettyPrec (-1) (CCompound [] [CBlockStmt nonCompound] undefined)
             prettyElse (CIf else_if_expr else_if_stat else_stat _) =
               text "else if" <+> parens (pretty else_if_expr)
@@ -344,7 +345,7 @@ instance Pretty CEnum where
 --   prettyList :: (Pretty a) => [a] -> Doc
 --   prettyList = hsep . punctuate comma . map pretty
 instance Pretty CDeclr where
-    prettyPrec prec declr = prettyDeclr True prec declr
+    prettyPrec = prettyDeclr True 
 
 prettyDeclr :: Bool -> Int -> CDeclr -> Doc
 prettyDeclr show_attrs prec (CDeclr name derived_declrs asmname cattrs _) =
@@ -368,8 +369,8 @@ prettyDeclr show_attrs prec (CDeclr name derived_declrs asmname cattrs _) =
      <> (if isVariadic then text "," <+> text "..." else empty)
     prettyParams (Left oldStyleIds) =
      hsep (punctuate comma (map identP oldStyleIds))
-    prettyAsmName asm_name_opt
-        = maybe empty (\asm_name -> text "__asm__" <> parens (pretty asm_name)) asm_name_opt
+    prettyAsmName 
+        = maybe empty (\asm_name -> text "__asm__" <> parens (pretty asm_name))
 
 instance Pretty CArrSize where
   pretty (CNoArrSize completeType) = ifP completeType (text "*")
@@ -419,7 +420,7 @@ instance Pretty CExpr where
         parenPrec p 26 $ prettyPrec 26 expr <> text "++"
     prettyPrec p (CUnary CPostDecOp expr _) =
         parenPrec p 26 $ prettyPrec 26 expr <> text "--"
-    prettyPrec p (CUnary op expr@(CUnary _ _ _) _) =
+    prettyPrec p (CUnary op expr@CUnary {} _) =
         --                             parens aren't necessary, but look nicer imho
         parenPrec p 25 $ pretty op <+> parens (prettyPrec 25 expr)
     prettyPrec p (CUnary op expr _) =
