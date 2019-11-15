@@ -29,6 +29,17 @@ spec = do
       |]
       parseAST pFunc source `shouldParse`
         Func "hello" TyVoid [("argc",TyDef "Int")] [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
+    it "parses a function with multiple statements" $ do
+      let source = deindent [r|
+        hello: Void =
+          val x: Int32 = 1
+          x = 2
+      |]
+      parseAST pFunc source `shouldParse`
+        Func "hello" TyVoid [] [
+          Declare "x" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) (),
+          SExpr (Assign (Identifier "x" ()) (Literal (IntLiteral 2 Dec []) ()) ()) ()
+        ] ()
 
   describe "enum" $ do
     it "parses a simple enum" $ do
@@ -47,3 +58,41 @@ spec = do
       |]
       parseAST pEnum source `shouldParse`
         Enum "MyEnum" [("Black", Nothing), ("Blue", Nothing)] ()
+
+  describe "val" $ do
+    it "declares a variable with no value" $ do
+      let source = "val X: Y"
+      parseAST pDecl source `shouldParse` Decl "X" (TyDef "Y") Nothing ()
+    it "declares a variable with an expression" $ do
+      let source = "val X: Y = 1"
+      parseAST pDecl source `shouldParse` Decl "X"
+        (TyDef "Y") (Just (Literal (IntLiteral 1 Dec []) ())) ()
+    it "declares a static inline const variable" $ do
+      let source = "static inline const val X: Y = 1"
+      parseAST pDecl source `shouldParse` Decl "X"
+        (TyStatic (TyInline (TyConst (TyDef "Y")))) (Just (Literal (IntLiteral 1 Dec []) ())) ()
+
+  describe "modules" $ do
+    it "parses a simple module" $ do
+      let source = deindent [r|
+        module ABC =
+          val ItsEasy: Int32 = 0
+          val As123: Int32   = 1
+      |]
+      parseAST pModule source `shouldParse` Module "ABC" [
+        Decl "ItsEasy" (TyDef "Int32") (Just (Literal (IntLiteral 0 Dec []) ())) (),
+        Decl "As123" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) ()
+       ] ()
+
+    it "parses a more advanced module" $ do
+      let source = deindent [r|
+        module MyModule =
+          val SomeGlobal: Int32 = 0
+
+          initialize: Void =
+            SomeGlobal = 1
+      |]
+      parseAST pModule source `shouldParse` Module "ABC" [
+        Decl "ItsEasy" (TyDef "Int32") (Just (Literal (IntLiteral 0 Dec []) ())) (),
+        Decl "As123" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) ()
+       ] ()

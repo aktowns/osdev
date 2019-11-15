@@ -45,11 +45,11 @@ spec = do
         (Literal (IntLiteral 1 Dec []) ()) ()
     it "parses a prefix increment expression" $ do
       let source = "++1"
-      parseAST pExpr source `shouldParse` Unary UnaryPrefix Negate
+      parseAST pExpr source `shouldParse` Unary UnaryPrefix Increment
         (Literal (IntLiteral 1 Dec []) ()) ()
     it "parses a prefix decrement expression" $ do
       let source = "--1"
-      parseAST pExpr source `shouldParse` Unary UnaryPrefix Negate
+      parseAST pExpr source `shouldParse` Unary UnaryPrefix Decrement
         (Literal (IntLiteral 1 Dec []) ()) ()
     it "parses a postfix increment expression" $ do
       let source = "1++"
@@ -59,7 +59,6 @@ spec = do
       let source = "1--"
       parseAST pExpr source `shouldParse` Unary UnaryPostfix Decrement
         (Literal (IntLiteral 1 Dec []) ()) ()
-
 
   describe "array-sub" $ do
     it "parses a simple array subscript" $ do
@@ -89,3 +88,13 @@ spec = do
       let source = "hello(world(1))"
       parseAST pFuncCall source `shouldParse`
         FunCall "hello" [ FunCall "world" [Literal (IntLiteral 1 Dec []) () ] ()] ()
+
+  describe "assignment" $ do
+    it "parses a local identifier assignment" $ do
+      let source = "terminal = 1"
+      parseAST pAssign source `shouldParse`
+        Assign (Identifier "terminal" ()) (Literal (IntLiteral 1 Dec []) ()) ()
+    it "parses a global identifier assignment" $ do
+      let source = "Terminal = 1"
+      parseAST pAssign source `shouldParse`
+        Assign (Identifier "Terminal" ()) (Literal (IntLiteral 1 Dec []) ()) ()

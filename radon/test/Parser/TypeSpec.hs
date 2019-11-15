@@ -13,7 +13,7 @@ import AST
 import Parser.Utils
 
 spec :: Spec
-spec = do
+spec =
   describe "type" $ do
     it "parses a type" $ do
       let source = "UInt"

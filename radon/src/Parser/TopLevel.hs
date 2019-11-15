@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Parser.TopLevel
+-- Copyright   :  Copyright (c) 2019 Ashley Towns
+-- License     :  BSD-style
+-- Maintainer  :  code@ashleytowns.id.au
+-- Stability   : experimental
+-- Portability : portable
+--
+-- This module provides a parsing utilities for top level statements
+-----------------------------------------------------------------------------
 module Parser.TopLevel where
 
 import Data.Text (Text)
@@ -6,6 +17,7 @@ import Data.Maybe (fromMaybe)
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import Text.Megaparsec.Debug
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
@@ -15,7 +27,7 @@ import Parser.Type
 import Parser.Statement
 
 pEnum :: Parser TL
-pEnum = L.nonIndented scn (L.indentBlock scn preamb) <?> "enum"
+pEnum = L.indentBlock scn preamb
  where
   preamb = do
     pos <- getNA
@@ -27,57 +39,56 @@ pEnum = L.nonIndented scn (L.indentBlock scn preamb) <?> "enum"
   pEnumBody :: Parser (Text, Maybe Integer)
   pEnumBody = (,) <$> cIdentifier <*> optional (equals *> integer)
 
-pArgs :: Parser [(Text, Type)]
-pArgs = ((,) <$> (identifier <* colon) <*> pType) `sepBy` comma
-
-pFuncPreamb :: Parser (NodeAnnotation, [Text], Text, [(Text, Type)], Type)
-pFuncPreamb = do
-    pos <- getNA
-    quals <- many (kStatic <|> kInline)
-    name <- identifier
-    args <- optional $ parens pArgs
-    _ <- colon
-    typ <- pType
-    _ <- equals
-    return (pos, quals, name, fromMaybe [] args, typ)
-
-pFuncSmall :: Parser TL
-pFuncSmall = L.nonIndented scn preamb
- where 
-  preamb = do
+pFunc :: Parser TL
+pFunc = dbg "func" $ (try pFuncSmall) <|> pFuncFull
+ where
+  pFuncSmall :: Parser TL
+  pFuncSmall = do
     (pos, quals, name, args, typ) <- pFuncPreamb
     body <- pStmt
-    return $ Func name typ args [body] pos
+    return $ Func name (foldr ($) typ quals) args [body] pos
 
-pFuncFull :: Parser TL
-pFuncFull = L.indentBlock scn preamb
- where 
-  preamb = do
-    (pos, quals, name, args, typ) <- pFuncPreamb
-    return $ L.IndentSome Nothing (\x -> return $ Func name typ args x pos) pStmt
+  pFuncFull :: Parser TL
+  pFuncFull = L.nonIndented scn (L.indentBlock scn preamb)
+   where
+    preamb = do
+      (pos, quals, name, args, typ) <- pFuncPreamb
+      return $ L.IndentSome Nothing (\x -> return $ Func name (foldr ($) typ quals) args x pos) pStmt
 
-pFunc :: Parser TL
-pFunc = try pFuncSmall <|> pFuncFull
+  pFuncPreamb :: Parser (NodeAnnotation, [Type -> Type], Text, [(Text, Type)], Type)
+  pFuncPreamb = do
+      pos <- getNA
+      quals <- many pFunQual
+      name <- identifier
+      args <- optional $ parens pArgs
+      _ <- colon
+      typ <- pType
+      _ <- equals
+      return (pos, quals, name, fromMaybe [] args, typ)
+   where
+    pArgs :: Parser [(Text, Type)]
+    pArgs = ((,) <$> (identifier <* colon) <*> pType) `sepBy` comma
 
 pDecl :: Parser TL
 pDecl = do
   pos <- getNA
-  quals <- many (kStatic <|> kConst)
+  quals <- many pVarQual
   name <- kVal *> cIdentifier <* colon
   typ <- pType
-  value <- optional $ equals *> pExpr <* eol
-  return (Decl name typ value pos) <?> "val"
+  value <- optional $ equals *> pExpr
+  return (Decl name (foldr ($) typ quals) value pos) <?> "val"
 
 pModule :: Parser TL
-pModule = L.nonIndented scn (L.indentBlock scn preamb)
- where 
+pModule = dbg "?" $ L.nonIndented scn (L.indentBlock scn preamb)
+ where
   preamb = do
     pos <- getNA
     name <- kModule *> cIdentifier <* equals
     return $ L.IndentSome Nothing (\x -> return $ Module name x pos) pTopLevelEntry
 
 pTopLevelEntry :: Parser TL
-pTopLevelEntry = try pEnum <|> try pFunc <|> try pModule <|> pDecl
+pTopLevelEntry = try pEnum <|> try pFunc <|> try pDecl <|> try pModule
 
 pTopLevel :: Parser [TL]
-pTopLevel = many pTopLevelEntry
+pTopLevel = L.nonIndented scn $ many (pTopLevelEntry <* space)
+

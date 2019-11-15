@@ -1,13 +1,22 @@
 cabal-version:       >=1.10
 name:                radon
 version:             0.1.0.0
+license:             BSD3
 license-file:        LICENSE
 author:              Ashley Towns
 maintainer:          mail@ashleytowns.id.au
 build-type:          Simple
 extra-source-files:  CHANGELOG.md
+                   , README.md
+homepage:            https://github.com/aktowns/osdev
+bug-reports:         https://github.com/aktowns/osdev/issues
+category:            Language
+synopsis:            A Compile to C language
+description:
 
-library 
+  A toy compile to C language that xenon is implemented in.
+
+library
   exposed-modules:     AST
                      , CodeGen
                      , CodeGen.C.Common

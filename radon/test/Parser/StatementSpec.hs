@@ -26,7 +26,7 @@ spec = do
   describe "val" $ do
     it "declares a variable with no value" $ do
       let source = "val x: Y"
-      parseAST pDeclare source `shouldParse` Return Nothing ()
+      parseAST pDeclare source `shouldParse` Declare "x" (TyDef "Y") Nothing ()
     it "declares a variable with an expression" $ do
       let source = "val x: Y = 1"
       parseAST pDeclare source `shouldParse` Declare "x"
@@ -70,3 +70,14 @@ spec = do
         (Binary LessThan (Identifier "i" ()) (Literal (IntLiteral 10 Dec []) ()) ())
         (Unary UnaryPostfix Increment (Identifier "i" ()) ())
         [SExpr (Unary UnaryPostfix Increment (Identifier "len" ()) ()) ()] ()
+
+  describe "expressions" $ do
+    it "parses a simple expression into a statement" $ do
+      let source = "1"
+      parseAST pStmtExpr source `shouldParse` SExpr (Literal (IntLiteral 1 Dec []) ()) ()
+
+    it "parses an assignment expression" $ do
+      let source = "A = 1"
+      parseAST pStmtExpr source `shouldParse` SExpr (Assign (Identifier "A" ())
+        (Literal (IntLiteral 1 Dec []) ()) ()) ()
+

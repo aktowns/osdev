@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  AST
+-- Copyright   :  Copyright (c) 2019 Ashley Towns
+-- License     :  BSD-style
+-- Maintainer  :  code@ashleytowns.id.au
+-- Stability   : experimental
+-- Portability : portable
+--
+-- The radon syntax tree
+-----------------------------------------------------------------------------
 module AST where
 
 import Language.C.Syntax.AST (Annotated(..))
@@ -86,8 +97,10 @@ data Statement a = Declare Text Type (Maybe (Expression a)) a
 type Stmt = Statement NodeAnnotation
 
 instance Functor TopLevel where
-  fmap f (Enum a1 a2 a3) = Enum a1 a2 (f a3)
+  fmap f (Enum a1 a2 a3)       = Enum a1 a2 (f a3)
   fmap f (Func a1 a2 a3 a4 a5) = Func a1 a2 a3 (fmap f <$> a4) (f a5)
+  fmap f (Decl a1 a2 a3 a4)    = Decl a1 a2 ((fmap . fmap) f a3) (f a4)
+  fmap f (Module a1 a2 a3)     = Module a1 ((fmap . fmap) f a2) (f a3)
 
 instance Annotated TopLevel where
   annotation (Enum _ _ n)     = n

@@ -1,3 +1,13 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Parser.Common
+-- Copyright   :  Copyright (c) 2019 Ashley Towns
+-- License     :  BSD-style
+-- Maintainer  :  code@ashleytowns.id.au
+-- Stability   : experimental
+-- Portability : portable
+--
+-- Some parser utils/defs used throughout the parsers
 module Parser.Common where
 
 import Data.Void
