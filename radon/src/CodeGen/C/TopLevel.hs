@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  CodeGen.C.TopLevel
+-- Copyright   :  Copyright (c) 2019 Ashley Towns
+-- License     :  BSD-style
+-- Maintainer  :  code@ashleytowns.id.au
+-- Stability   : experimental
+-- Portability : portable
+--
+-- This module provides C code generation for top level radon nodes
+-----------------------------------------------------------------------------
 module CodeGen.C.TopLevel where
 
 import Data.Functor ((<&>))
@@ -24,9 +35,9 @@ evalArgs = map eval
      CDecl t' [(Just (CDeclr (Just (mkIdent' n (Name 0))) d Nothing [] un), Nothing, Nothing)] un
 
 enum :: Text -> [(Text, Maybe Integer)] -> CEnum
-enum name xs = 
+enum name xs =
   CEnum (Just $ mkIdent' name (Name 0)) (Just $ map splat xs) [] un
- where 
+ where
    splat (n, Just v) = (mkIdent' n (Name 1), Just (CConst $ CIntConst (cInteger v) un))
    splat (n, Nothing) = (mkIdent' n (Name 1), Nothing)
 
@@ -43,7 +54,7 @@ evalTopLevel (Enum n v na) =
   [CDeclExt $ CDecl [CTypeSpec (CEnumType (enum n v) un)] [] $ toNI na]
 evalTopLevel (Func n t a b na) =
   [CFDefExt $ func n t a (map evalStmt b) $ toNI na]
-evalTopLevel (Decl n t me na) = 
+evalTopLevel (Decl n t me na) =
   [CDeclExt $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), initExpr me, Nothing)] $ toNI na]
  where
    (typ, decs) = evalType t

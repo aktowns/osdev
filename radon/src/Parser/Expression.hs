@@ -14,6 +14,7 @@ module Parser.Expression where
 import Data.Functor ((<&>))
 import Control.Applicative hiding (some, many)
 import Control.Monad.Combinators.Expr
+import Data.Text (Text)
 
 import Text.Megaparsec
 import Text.Megaparsec.Char (char)
@@ -21,6 +22,14 @@ import Text.Megaparsec.Char (char)
 import AST
 import Parser.Common
 import Parser.Type
+
+memberTable = [ [ postfix dot         $ Member FieldMem
+                , postfix larrow      $ Member PtrMem
+                , postfix coloncolon  $ Member ModMem ]
+              ]
+ where
+  postfix :: Parser b -> (a -> NodeAnnotation -> a) -> Operator Parser a
+  postfix name f = Postfix $ (getNA <&> flip f) <* name
 
 table :: [[Operator Parser Expr]]
 table = [ [ prefix  minusminus   $ Unary  UnaryPrefix  Decrement
@@ -117,6 +126,7 @@ pTerm = pString
     <|> try pAssign
     <|> try pFuncCall
     <|> try pArraySub
+    <|> pMember
     <|> pIdentifier
     <|> pCIdentifier
 
@@ -139,6 +149,16 @@ pArraySub = do
   ident <- identifier <|> cIdentifier
   subsc <- bracks pExpr
   return $ ArraySub ident subsc pos
+
+pMemberExpr :: Parser Expr
+pMemberExpr = makeExprParser pTerm memberTable
+
+pMember :: Parser Expr
+pMember = do
+  pos <- getNA
+  var <- pMemberExpr
+  field <- identifier
+  return $ MemberRef var field pos
 
 pAssign :: Parser Expr
 pAssign = do

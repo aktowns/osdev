@@ -75,6 +75,8 @@ data Lit = IntLiteral Integer IntRep [IntType]
          | CharLiteral Char
          deriving (Show, Eq, Ord)
 
+data MemberType = ModMem | PtrMem | FieldMem deriving (Show, Eq, Ord)
+
 data Expression a = Literal Lit a
                   | Binary BinaryOp (Expression a) (Expression a) a
                   | Unary Fix UnaryOp (Expression a) a
@@ -83,6 +85,8 @@ data Expression a = Literal Lit a
                   | ArraySub Text (Expression a) a
                   | Assign (Expression a) (Expression a) a
                   | Cast Type (Expression a) a
+                  | Member MemberType (Expression a) a
+                  | MemberRef (Expression a) Text a
                   deriving (Show, Eq, Ord)
 
 type Expr = Expression NodeAnnotation
@@ -122,6 +126,7 @@ instance Functor Expression where
   fmap f (Unary a1 a2 a3 a4)  = Unary a1 a2 (fmap f a3) (f a4)
   fmap f (Identifier a1 a2)   = Identifier a1 (f a2)
   fmap f (Cast a1 a2 a3)      = Cast a1 (fmap f a2) (f a3)
+  fmap f (Member a1 a2 a3)    = Member a1 (fmap f a2) (f a3)
 
 instance Annotated Expression where
   annotation (Literal _ n)    = n
@@ -132,6 +137,7 @@ instance Annotated Expression where
   annotation (Unary _ _ _ n)  = n
   annotation (Identifier _ n) = n
   annotation (Cast _ _ n)     = n
+  annotation (Member _ _ n)   = n
 
   amap f (Literal a1 a2)      = Literal a1 $ f a2
   amap f (Binary a1 a2 a3 a4) = Binary a1 a2 a3 $ f a4
@@ -141,6 +147,7 @@ instance Annotated Expression where
   amap f (Unary a1 a2 a3 a4)  = Unary a1 a2 a3 $ f a4
   amap f (Identifier a1 a2)   = Identifier a1 $ f a2
   amap f (Cast a1 a2 a3)      = Cast a1 a2 $ f a3
+  amap f (Member a1 a2 a3)    = Member a1 a2 $ f a3
 
 instance Functor Statement where
   fmap f (Declare a1 a2 a3 a4) = Declare a1 a2 ((fmap . fmap) f a3) (f a4)
@@ -148,7 +155,6 @@ instance Functor Statement where
   fmap f (While a1 a2 a3)      = While (fmap f a1) ((fmap . fmap) f a2) (f a3)
   fmap f (For a1 a2 a3 a4 a5)  = For (fmap f a1) (fmap f a2) (fmap f a3) ((fmap . fmap) f a4) (f a5)
   fmap f (SExpr a1 a2)         = SExpr (fmap f a1) (f a2)
-  fmap f (While a1 a2 a3)      = While (fmap f a1) ((fmap . fmap) f a2) (f a3)
 
 instance Annotated Statement where
   annotation (Declare _ _ _ n) = n

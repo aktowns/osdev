@@ -8,6 +8,7 @@
 -- Portability : portable
 --
 -- Some parser utils/defs used throughout the parsers
+-----------------------------------------------------------------------------
 module Parser.Common where
 
 import Data.Void
@@ -20,9 +21,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import Language.C.Data.Position (position)
-import Language.C.Data.Node (NodeInfo, mkNodeInfoOnlyPos)
-
 import AST
 
 type Parser = Parsec Void Text
@@ -30,50 +28,137 @@ type Parser = Parsec Void Text
 --------------------
 -- symbols
 ----
+colon :: Parser Text
 colon      = symbol ":"
+
+coloncolon :: Parser Text
+coloncolon = symbol "::"
+
+semi :: Parser Text
 semi       = symbol ";"
+
+dot :: Parser Text
 dot        = symbol "."
+
+lparen :: Parser Text
 lparen     = symbol "("
+
+rparen :: Parser Text
 rparen     = symbol ")"
+
+langle :: Parser Text
 langle     = symbol "<"
+
+rangle :: Parser Text
 rangle     = symbol ">"
+
+lbrace :: Parser Text
 lbrace     = symbol "{"
+
+rbrace :: Parser Text
 rbrace     = symbol "}"
+
+lbrack :: Parser Text
 lbrack     = symbol "["
+
+rbrack :: Parser Text
 rbrack     = symbol "]"
+
+larrow :: Parser Text
 larrow     = symbol "<-"
+
+rarrow :: Parser Text
 rarrow     = symbol "->"
+
+equals :: Parser Text
 equals     = symbol "="
+
+eqeq :: Parser Text
 eqeq       = symbol "=="
+
+neq :: Parser Text
 neq        = symbol "!="
+
+langleeq :: Parser Text
 langleeq   = symbol "<="
+
+rangleeq :: Parser Text
 rangleeq   = symbol ">="
+
+comma :: Parser Text
 comma      = symbol ","
+
+plus :: Parser Text
 plus       = symbol "+"
+
+plusplus :: Parser Text
 plusplus   = symbol "++"
+
+minus :: Parser Text
 minus      = symbol "-"
+
+minusminus :: Parser Text
 minusminus = symbol "--"
+
+star :: Parser Text
 star       = symbol "*"
+
+fslash :: Parser Text
 fslash     = symbol "/"
+
+bslash :: Parser Text
 bslash     = symbol "\\"
+
+shiftl :: Parser Text
 shiftl     = symbol "<<"
+
+shiftr :: Parser Text
 shiftr     = symbol ">>"
+
+pipe :: Parser Text
 pipe       = symbol "|"
+
+pipepipe :: Parser Text
 pipepipe   = symbol "||"
+
+amp :: Parser Text
 amp        = symbol "&"
+
+ampamp :: Parser Text
 ampamp     = symbol "&&"
+
+caret :: Parser Text
 caret      = symbol "^"
 
-kStatic  = symbol "static"
-kInline  = symbol "inline"
-kConst   = symbol "const"
+kStatic :: Parser Text
+kStatic  = symbol "static" <?> "static"
+
+kInline :: Parser Text
+kInline  = symbol "inline" <?> "inline"
+
+kConst :: Parser Text
+kConst   = symbol "const" <?> "const"
+
+kFunc :: Parser Text
 kFunc    = symbol "func"
-kEnum    = symbol "enum"
+
+kEnum :: Parser Text
+kEnum    = symbol "enum" <?> "enum"
+
+kReturn :: Parser Text
 kReturn  = symbol "return"
-kVal     = symbol "val"
+
+kVal :: Parser Text
+kVal     = symbol "val" <?> "var"
+
+kWhile :: Parser Text
 kWhile   = symbol "while"
+
+kFor :: Parser Text
 kFor     = symbol "for"
-kModule  = symbol "module"
+
+kModule :: Parser Text
+kModule  = symbol "module" <?> "module"
 
 lineComment :: Parser ()
 lineComment = L.skipLineComment "#"

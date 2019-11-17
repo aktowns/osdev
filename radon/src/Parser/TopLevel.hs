@@ -16,7 +16,7 @@ import Control.Applicative hiding (some, many)
 import Data.Maybe (fromMaybe)
 
 import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec.Char (space)
 import Text.Megaparsec.Debug
 import qualified Text.Megaparsec.Char.Lexer as L
 
@@ -26,8 +26,18 @@ import Parser.Expression
 import Parser.Type
 import Parser.Statement
 
+-- | Parses an enum
+--
+-- > enum EnumType =
+-- >   Black = 1
+-- >   Blue  = 2
+-- or
+--
+-- > enum EnumType =
+-- >   Black
+-- >   Blue
 pEnum :: Parser TL
-pEnum = L.indentBlock scn preamb
+pEnum = dbg "enum" $ L.indentBlock scn preamb
  where
   preamb = do
     pos <- getNA
@@ -39,8 +49,19 @@ pEnum = L.indentBlock scn preamb
   pEnumBody :: Parser (Text, Maybe Integer)
   pEnumBody = (,) <$> cIdentifier <*> optional (equals *> integer)
 
+-- | Parses a function
+--
+-- > functionName: ReturnType =
+-- >   body
+-- or
+--
+-- > functionName(arg: Type): ReturnType = statement
+-- or
+--
+-- > functionName(arg: Type): ReturnType =
+-- >   body
 pFunc :: Parser TL
-pFunc = dbg "func" $ (try pFuncSmall) <|> pFuncFull
+pFunc = dbg "func" $ try pFuncSmall <|> pFuncFull
  where
   pFuncSmall :: Parser TL
   pFuncSmall = do
@@ -49,7 +70,7 @@ pFunc = dbg "func" $ (try pFuncSmall) <|> pFuncFull
     return $ Func name (foldr ($) typ quals) args [body] pos
 
   pFuncFull :: Parser TL
-  pFuncFull = L.nonIndented scn (L.indentBlock scn preamb)
+  pFuncFull = L.indentBlock scn preamb
    where
     preamb = do
       (pos, quals, name, args, typ) <- pFuncPreamb
@@ -69,8 +90,14 @@ pFunc = dbg "func" $ (try pFuncSmall) <|> pFuncFull
     pArgs :: Parser [(Text, Type)]
     pArgs = ((,) <$> (identifier <* colon) <*> pType) `sepBy` comma
 
+-- | Parses a val declaration
+--
+-- > val XYZ: String = "Hello"
+-- or
+--
+-- > val XYZ: Int32
 pDecl :: Parser TL
-pDecl = do
+pDecl = dbg "decl" $ do
   pos <- getNA
   quals <- many pVarQual
   name <- kVal *> cIdentifier <* colon
@@ -78,8 +105,13 @@ pDecl = do
   value <- optional $ equals *> pExpr
   return (Decl name (foldr ($) typ quals) value pos) <?> "val"
 
+-- | parses top level module declarations
+--
+-- > module Hello =
+-- >   val World: Int32 = 0
+--
 pModule :: Parser TL
-pModule = dbg "?" $ L.nonIndented scn (L.indentBlock scn preamb)
+pModule = dbg "module" $ L.nonIndented scn (L.indentBlock scn preamb)
  where
   preamb = do
     pos <- getNA
@@ -90,5 +122,4 @@ pTopLevelEntry :: Parser TL
 pTopLevelEntry = try pEnum <|> try pFunc <|> try pDecl <|> try pModule
 
 pTopLevel :: Parser [TL]
-pTopLevel = L.nonIndented scn $ many (pTopLevelEntry <* space)
-
+pTopLevel = some $ L.nonIndented scn $ pTopLevelEntry <* space

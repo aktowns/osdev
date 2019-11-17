@@ -1,6 +1,15 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  CodeGen.C.Expression
+-- Copyright   :  Copyright (c) 2019 Ashley Towns
+-- License     :  BSD-style
+-- Maintainer  :  code@ashleytowns.id.au
+-- Stability   : experimental
+-- Portability : portable
+--
+-- This module provides C code generation for radon expressions
+-----------------------------------------------------------------------------
 module CodeGen.C.Expression where
-
-import Data.Functor ((<&>))
 
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -12,6 +21,7 @@ import Language.C.Syntax.Constants
 
 import AST
 import CodeGen.C.Common
+import CodeGen.C.Type
 
 assign :: Expr -> Expr -> NodeInfo -> CExpr
 assign n v = CAssign CAssignOp (evalExpr n) (evalExpr v)
@@ -60,5 +70,9 @@ evalExpr (Unary UnaryPostfix Increment e na) =
   CUnary CPostIncOp (evalExpr e) $ toNI na
 evalExpr (Assign n v na) =
   assign n v $ toNI na
+evalExpr (Cast ty e na) = CCast (CDecl typ [decs'] un) (evalExpr e) $ toNI na
+ where
+  (typ, decs)  = evalType ty
+  decs' = (Just (CDeclr Nothing decs Nothing [] un), Nothing, Nothing)
 evalExpr x =
   error $ "unhandled " ++ show x

@@ -1,15 +1,25 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  CodeGen.C.Type
+-- Copyright   :  Copyright (c) 2019 Ashley Towns
+-- License     :  BSD-style
+-- Maintainer  :  code@ashleytowns.id.au
+-- Stability   : experimental
+-- Portability : portable
+--
+-- This module provides code generation for C types
+-----------------------------------------------------------------------------
 module CodeGen.C.Type where
 
 import Data.Bifunctor (first, second)
 
 import Language.C.Data.Name
-import Language.C.Data.Node (NodeInfo)
 import Language.C.Syntax.AST
 
 import AST
 import CodeGen.C.Common
 
-evalType :: Type -> ([CDeclarationSpecifier NodeInfo], [CDerivedDeclr])
+evalType :: Type -> ([CDeclSpec], [CDerivedDeclr])
 evalType TyVoid        = ([CTypeSpec (CVoidType un)], [])
 evalType TyChar        = ([CTypeSpec (CCharType un)], [])
 evalType (TyDef ty)    = ([CTypeSpec (CTypeDef (mkIdent' ty (Name 0)) un)], [])

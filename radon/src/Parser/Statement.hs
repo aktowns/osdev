@@ -118,4 +118,4 @@ pStmtExpr = SExpr <$> pExpr <*> getNA
 
 -- | Tries parsing any of the statements
 pStmt :: Parser Stmt
-pStmt = (pReturn <|> pDeclare <|> try pWhile <|> try pFor <|> pStmtExpr) <* space
+pStmt = pReturn <|> pDeclare <|> try pWhile <|> try pFor <|> pStmtExpr
