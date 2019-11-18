@@ -31,6 +31,7 @@ evalBinaryOp Add        = CAddOp
 evalBinaryOp Sub        = CSubOp
 evalBinaryOp Mul        = CMulOp
 evalBinaryOp Div        = CDivOp
+evalBinaryOp LessThan   = CLeOp
 evalBinaryOp ShiftLeft  = CShlOp
 evalBinaryOp ShiftRight = CShrOp
 evalBinaryOp BitwiseOr  = COrOp
@@ -58,6 +59,8 @@ evalExpr (Literal (IntLiteral i rep typ) na) =
   CConst (CIntConst (CInteger i (evalIntRep rep) (evalIntType typ)) $ toNI na)
 evalExpr (Literal (StrLiteral s) na) =
   CConst (CStrConst (cString $ T.unpack s) $ toNI na)
+evalExpr (Literal (CharLiteral c) na) = 
+  CConst (CCharConst (cChar c) $ toNI na)
 evalExpr (Binary op e1 e2 na) =
   evalBinary op e1 e2 $ toNI na
 evalExpr (FunCall n a na) =

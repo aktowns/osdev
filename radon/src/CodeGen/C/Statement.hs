@@ -23,8 +23,8 @@ import CodeGen.C.Common
 import CodeGen.C.Expression
 import CodeGen.C.Type
 
-declare :: Type -> Text -> Maybe CExpr -> NodeInfo -> CBlockItem
-declare t n v ni = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)] ni
+declare :: Type -> Text -> Maybe CExpr -> NodeInfo -> CDecl
+declare t n v ni = CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)] ni
  where
   name = mkIdent' n (Name 0)
   (typ, decs)  = evalType t
@@ -32,16 +32,16 @@ declare t n v ni = CBlockDecl $ CDecl typ [(Just (CDeclr (Just name) decs Nothin
 
 evalStmt :: Stmt -> CBlockItem
 evalStmt (Declare n t mv na) =
-  declare t n (mv <&> evalExpr) $ toNI na
+  CBlockDecl $ declare t n (mv <&> evalExpr) $ toNI na
 evalStmt (Return e na) =
   CBlockStmt $ CReturn (evalExpr <$> e) $ toNI na
 evalStmt (While c b na) =
   CBlockStmt $ CWhile (evalExpr c) (CCompound [] (map evalStmt b) $ toNI na) False $ toNI na
 evalStmt (SExpr e na) =
   CBlockStmt $ CExpr (Just $ evalExpr e) $ toNI na
-evalStmt (For i c f b na) =
+evalStmt (For (Declare n t mv na') c f b na) =
   CBlockStmt $
-    CFor (Left Nothing)
+    CFor (Right $ declare t n (mv <&> evalExpr) $ toNI na')
          (Just $ evalExpr c)
          (Just $ evalExpr f)
          (CCompound [] (map evalStmt b) $ toNI na) $ toNI na

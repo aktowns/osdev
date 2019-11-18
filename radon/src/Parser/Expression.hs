@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Parser.Expression
@@ -23,16 +24,11 @@ import AST
 import Parser.Common
 import Parser.Type
 
-memberTable = [ [ postfix dot         $ Member FieldMem
-                , postfix larrow      $ Member PtrMem
-                , postfix coloncolon  $ Member ModMem ]
-              ]
- where
-  postfix :: Parser b -> (a -> NodeAnnotation -> a) -> Operator Parser a
-  postfix name f = Postfix $ (getNA <&> flip f) <* name
-
 table :: [[Operator Parser Expr]]
-table = [ [ prefix  minusminus   $ Unary  UnaryPrefix  Decrement
+table = [ [ binary  dot          $ MemberRef FieldMem
+          , binary  larrow       $ MemberRef PtrMem
+          , binary  coloncolon   $ MemberRef ModMem ]
+        , [ prefix  minusminus   $ Unary  UnaryPrefix  Decrement
           , prefix  plusplus     $ Unary  UnaryPrefix  Increment
           , postfix minusminus   $ Unary  UnaryPostfix Decrement
           , postfix plusplus     $ Unary  UnaryPostfix Increment ]
@@ -126,7 +122,6 @@ pTerm = pString
     <|> try pAssign
     <|> try pFuncCall
     <|> try pArraySub
-    <|> pMember
     <|> pIdentifier
     <|> pCIdentifier
 
@@ -150,16 +145,6 @@ pArraySub = do
   subsc <- bracks pExpr
   return $ ArraySub ident subsc pos
 
-pMemberExpr :: Parser Expr
-pMemberExpr = makeExprParser pTerm memberTable
-
-pMember :: Parser Expr
-pMember = do
-  pos <- getNA
-  var <- pMemberExpr
-  field <- identifier
-  return $ MemberRef var field pos
-
 pAssign :: Parser Expr
 pAssign = do
   pos <- getNA
@@ -169,4 +154,7 @@ pAssign = do
   return $ Assign left right pos
 
 pExpr :: Parser Expr
-pExpr = makeExprParser pTerm table
+pExpr = makeExprParser pTerm table >>= \case
+  x@(MemberRef _ _ (Identifier _ _) _) -> return x
+  (MemberRef _ _ _ _)                  -> customFailure $ ParserError "unexpected expression in member field access"
+  x -> return x

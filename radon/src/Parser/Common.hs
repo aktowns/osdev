@@ -11,7 +11,6 @@
 -----------------------------------------------------------------------------
 module Parser.Common where
 
-import Data.Void
 import Control.Monad (void)
 
 import Data.Text (Text)
@@ -23,7 +22,13 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
 
-type Parser = Parsec Void Text
+data ParserError = ParserError Text deriving (Show, Eq, Ord)
+
+instance ShowErrorComponent ParserError where
+  showErrorComponent (ParserError msg) = T.unpack $ msg
+  errorComponentLen _ = 1
+
+type Parser = Parsec ParserError Text
 
 --------------------
 -- symbols
