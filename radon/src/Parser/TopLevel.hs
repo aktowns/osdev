@@ -37,7 +37,7 @@ import Parser.Statement
 -- >   Black
 -- >   Blue
 pEnum :: Parser TL
-pEnum = dbg "enum" $ L.indentBlock scn preamb
+pEnum = L.indentBlock scn preamb
  where
   preamb = do
     pos <- getNA
@@ -61,7 +61,7 @@ pEnum = dbg "enum" $ L.indentBlock scn preamb
 -- > functionName(arg: Type): ReturnType =
 -- >   body
 pFunc :: Parser TL
-pFunc = dbg "func" $ try pFuncSmall <|> pFuncFull
+pFunc = try pFuncSmall <|> pFuncFull
  where
   pFuncSmall :: Parser TL
   pFuncSmall = do
@@ -97,7 +97,7 @@ pFunc = dbg "func" $ try pFuncSmall <|> pFuncFull
 --
 -- > val XYZ: Int32
 pDecl :: Parser TL
-pDecl = dbg "decl" $ do
+pDecl = do
   pos <- getNA
   quals <- many pVarQual
   name <- kVal *> cIdentifier <* colon
@@ -111,27 +111,27 @@ pDecl = dbg "decl" $ do
 -- >   val World: Int32 = 0
 --
 pModule :: Parser TL
-pModule = dbg "module" $ L.nonIndented scn (L.indentBlock scn preamb)
+pModule = L.nonIndented scn (L.indentBlock scn preamb)
  where
   preamb = do
     pos <- getNA
     name <- kModule *> cIdentifier <* equals
     return $ L.IndentSome Nothing (\x -> return $ Module name x pos) pTopLevelEntry
 
--- | parses a type definition 
+-- | parses a type definition
 --
 -- > type String = Ptr<Char>
--- or 
--- 
+-- or
+--
 -- > type UInt8 = [C]{ uint8_t }
 --
 pTypeDef :: Parser TL
-pTypeDef = dbg "type" $ do
+pTypeDef = do
   pos <- getNA
   _ <- kType
   ty <- cIdentifier
-  _ <- equals 
-  ty2 <- Left <$> pType
+  _ <- equals
+  ty2 <- pType
   return $ TypeDef ty ty2 pos
 
 pTopLevelEntry :: Parser TL

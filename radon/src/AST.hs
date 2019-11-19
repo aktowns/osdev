@@ -29,6 +29,7 @@ data Type = TyVoid
           | TyStatic Type
           | TyInline Type
           | TyConst Type
+          | TyEmbedded (Embedded EType)
           deriving (Show, Eq, Ord)
 
 data BinaryOp = Add
@@ -64,7 +65,7 @@ data TopLevel a = Enum Text [(Text, Maybe Integer)] a
                 | Func Text Type [(Text, Type)] [Statement a] a
                 | Decl Text Type (Maybe (Expression a)) a
                 | Module Text [TopLevel a] a
-                | TypeDef Text (Either Type (Embedded EType a)) a
+                | TypeDef Text Type a
                 deriving (Show, Eq, Ord)
 
 type TL = TopLevel NodeAnnotation
@@ -96,6 +97,7 @@ data Statement a = Declare Text Type (Maybe (Expression a)) a
                  | Return (Maybe (Expression a)) a
                  | While (Expression a) [Statement a] a
                  | For (Statement a) (Expression a) (Expression a) [Statement a] a
+                 | If (Expression a) [Statement a] a
                  | SExpr (Expression a) a
                  deriving (Show, Eq, Ord)
 
@@ -104,14 +106,14 @@ type Stmt = Statement NodeAnnotation
 data Language = C deriving (Show, Eq, Ord)
 data EmbeddedType = EExpr | EStmt | EType deriving (Show, Eq, Ord)
 
-data Embedded :: EmbeddedType -> * -> * where
-  EmbeddedExpr :: Text -> Language -> a -> Embedded EExpr a
-  EmbeddedStmt :: Text -> Language -> a -> Embedded EStmt a
-  EmbeddedType :: Text -> Language -> a -> Embedded EType a
+data Embedded :: EmbeddedType -> * where
+  EmbeddedExpr :: Text -> Language -> Embedded EExpr
+  EmbeddedStmt :: Text -> Language -> Embedded EStmt
+  EmbeddedType :: Text -> Language -> Embedded EType
 
-deriving instance (Eq b) => Eq (Embedded a b)
-deriving instance (Ord b) => Ord (Embedded a b)
-deriving instance (Show b) => Show (Embedded a b)
+deriving instance Eq (Embedded a)
+deriving instance Ord (Embedded a)
+deriving instance Show (Embedded a)
 
 instance Functor TopLevel where
   fmap f (Enum a1 a2 a3)       = Enum a1 a2 (f a3)

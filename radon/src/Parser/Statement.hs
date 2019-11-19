@@ -73,6 +73,18 @@ pWhile = pWhileSmall <|> pWhileFull <?> "while"
       _ <- colon
       return $ L.IndentSome Nothing (\x -> return $ While cond x pos) pStmt
 
+-- if (x): 1
+--
+-- if (x): 1
+-- elif (x): 2
+-- else: 3
+--
+-- pIf :: Parser Stmt
+-- pIf = do
+--   _ <- kIf
+--   expr <- parens pExpr
+--   _ <- colon
+
 -- | parses a for statement
 --
 -- > for (val x: Int = 0; x < 10; x++): statement

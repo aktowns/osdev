@@ -69,6 +69,12 @@ lbrack     = symbol "["
 rbrack :: Parser Text
 rbrack     = symbol "]"
 
+lbraceper :: Parser Text
+lbraceper  = symbol "{%"
+
+rbraceper :: Parser Text
+rbraceper  = symbol "%}"
+
 larrow :: Parser Text
 larrow     = symbol "<-"
 
@@ -168,6 +174,15 @@ kModule  = symbol "module" <?> "module"
 kType :: Parser Text
 kType    = symbol "type" <?> "type"
 
+kIf :: Parser Text
+kIf      = symbol "if"
+
+kElif :: Parser Text
+kElif    = symbol "elif"
+
+kElse :: Parser Text
+kElse    = symbol "else"
+
 lineComment :: Parser ()
 lineComment = L.skipLineComment "#"
 
@@ -220,6 +235,9 @@ angles = between langle rangle
 
 bracks :: Parser a -> Parser a
 bracks = between lbrack rbrack
+
+bracesper :: Parser a -> Parser a
+bracesper = between lbraceper rbraceper
 
 --------------------
 -- utils

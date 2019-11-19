@@ -27,6 +27,7 @@ library
                      , CodeGen.C.Type
                      , Parser
                      , Parser.Common
+                     , Parser.Embedded
                      , Parser.Expression
                      , Parser.Statement
                      , Parser.TopLevel

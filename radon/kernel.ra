@@ -23,12 +23,12 @@ module Terminal =
   initialize: Void = 
     TerminalRow    = 0
     TerminalColumn = 0
-    TerminalColour = vga_entry_colour(VGAColour.Black, VGAColour.Blue)
+    TerminalColour = vga_entry_colour(VGAColour::Black, VGAColour::Blue)
     TerminalBuffer = (Ptr<UInt16>)0x88000
   
     for (val y: Size = 0; y < VGAHeight; y++):
       for (val x: Size = 0; x < VGAWidth; x++):
-        const Size index = y * VGAWidth * x
+        const val index: Size = y * VGAWidth * x
         TerminalBuffer[index] = vga_entry(' ', terminalColour)
   
   terminal_set_colour(colour: UInt8): Void =

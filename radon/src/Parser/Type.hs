@@ -18,6 +18,7 @@ import Text.Megaparsec
 
 import AST
 import Parser.Common
+import Parser.Embedded
 
 pUnaryType :: Parser Type
 pUnaryType = cIdentifier <&> \case
@@ -33,7 +34,7 @@ pWrapType = do
   return $ TyPtr inner
 
 pType :: Parser Type
-pType = pWrapType <|> pUnaryType
+pType = pWrapType <|> pUnaryType <|> (TyEmbedded <$> pTypeEmbed)
 
 pVarQual :: Parser (Type -> Type)
 pVarQual = (TyStatic <$ kStatic) <|> (TyInline <$ kInline) <|> (TyConst <$ kConst)

@@ -2,21 +2,21 @@
 # This file should be --ffreestanding
 
 # Integer types
-type Size   = [C]{ size_t }
+type Size   = [C]{% unsigned int %}
 
-type Int8   = [C]{ signed char }
-type Int16  = [C]{ signed short int }
-type Int32  = [C]{ signed int }
-type Int64  = [C]{ signed long int }
+type Int8   = [C]{% signed char %}
+type Int16  = [C]{% signed short int %}
+type Int32  = [C]{% signed int %}
+type Int64  = [C]{% signed long int %}
 
-type UInt8  = [C]{ unsigned char }
-type UInt16 = [C]{ unsigned short int }
-type UInt32 = [C]{ unsigned int }
-type UInt64 = [C]{ unsigned long int }
+type UInt8  = [C]{% unsigned char %}
+type UInt16 = [C]{% unsigned short int %}
+type UInt32 = [C]{% unsigned int %}
+type UInt64 = [C]{% unsigned long int %}
 
 # String types
-type Char   = [C]{ signed char }
-type UChar  = [C]{ unsigned char }
+type Char   = [C]{% signed char %}
+type UChar  = [C]{% unsigned char %}
 
 type String = Ptr<Char>
 

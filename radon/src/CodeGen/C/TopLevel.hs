@@ -42,7 +42,7 @@ enum name xs =
    splat (n, Nothing) = (mkIdent' (name <> "$" <> n) (Name 1), Nothing)
 
 typedef :: Type -> Text -> NodeAnnotation -> CDecl
-typedef ty name na = CDecl ([CStorageSpec (CTypedef un)] ++ t')
+typedef ty name na = CDecl (CStorageSpec (CTypedef un) : t')
     [(Just (CDeclr (Just (mkIdent' name (Name 0))) d Nothing [] un), Nothing, Nothing)] $ toNI na
  where (t', d) = evalType ty
 
@@ -67,6 +67,7 @@ evalTopLevel (Decl n t me na) =
    (typ, decs) = evalType t
    name = mkIdent' n (Name 0)
 evalTopLevel (Module name tls na) = tls >>= evalTopLevel -- TODO: Actually namespace the stuff
+evalTopLevel (TypeDef name ty na) = [CDeclExt $ typedef ty name na]
 
 evalTopLevels :: [TL] -> CTranslUnit
 evalTopLevels xs = CTranslUnit (xs >>= evalTopLevel) un
