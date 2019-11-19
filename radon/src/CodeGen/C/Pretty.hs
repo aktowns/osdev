@@ -441,9 +441,8 @@ instance Pretty CExpr where
         parenPrec p 26 $ prettyPrec 26 expr1
                        <> text "[" <> pretty expr2 <> text "]"
     prettyPrec p (CCall expr args ni) =
-        lineInfo ni $+$
-          (parenPrec p 30 $ prettyPrec 30 expr <> text "("
-            <> (sep . punctuate comma . map pretty) args <> text ")")
+        (parenPrec p 30 $ prettyPrec 30 expr <> text "("
+          <> (sep . punctuate comma . map pretty) args <> text ")")
     prettyPrec p (CMember expr ident deref _) =
         parenPrec p 26 $ prettyPrec 26 expr
                        <> text (if deref then "->" else ".") <> identP ident

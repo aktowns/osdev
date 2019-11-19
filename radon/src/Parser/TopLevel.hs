@@ -118,8 +118,24 @@ pModule = dbg "module" $ L.nonIndented scn (L.indentBlock scn preamb)
     name <- kModule *> cIdentifier <* equals
     return $ L.IndentSome Nothing (\x -> return $ Module name x pos) pTopLevelEntry
 
+-- | parses a type definition 
+--
+-- > type String = Ptr<Char>
+-- or 
+-- 
+-- > type UInt8 = [C]{ uint8_t }
+--
+pTypeDef :: Parser TL
+pTypeDef = dbg "type" $ do
+  pos <- getNA
+  _ <- kType
+  ty <- cIdentifier
+  _ <- equals 
+  ty2 <- Left <$> pType
+  return $ TypeDef ty ty2 pos
+
 pTopLevelEntry :: Parser TL
-pTopLevelEntry = try pEnum <|> try pFunc <|> try pDecl <|> try pModule
+pTopLevelEntry = try pEnum <|> try pFunc <|> try pDecl <|> try pModule <|> pTypeDef
 
 pTopLevel :: Parser [TL]
 pTopLevel = some $ L.nonIndented scn $ pTopLevelEntry <* space

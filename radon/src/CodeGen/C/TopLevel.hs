@@ -38,8 +38,13 @@ enum :: Text -> [(Text, Maybe Integer)] -> CEnum
 enum name xs =
   CEnum (Just $ mkIdent' name (Name 0)) (Just $ map splat xs) [] un
  where
-   splat (n, Just v) = (mkIdent' n (Name 1), Just (CConst $ CIntConst (cInteger v) un))
-   splat (n, Nothing) = (mkIdent' n (Name 1), Nothing)
+   splat (n, Just v) = (mkIdent' (name <> "$" <> n) (Name 1), Just (CConst $ CIntConst (cInteger v) un))
+   splat (n, Nothing) = (mkIdent' (name <> "$" <> n) (Name 1), Nothing)
+
+typedef :: Type -> Text -> NodeAnnotation -> CDecl
+typedef ty name na = CDecl ([CStorageSpec (CTypedef un)] ++ t')
+    [(Just (CDeclr (Just (mkIdent' name (Name 0))) d Nothing [] un), Nothing, Nothing)] $ toNI na
+ where (t', d) = evalType ty
 
 func :: Text -> Type -> [(Text, Type)] -> [CBlockItem] -> NodeInfo -> CFunDef
 func name typ args body ni =
@@ -51,7 +56,9 @@ func name typ args body ni =
 
 evalTopLevel :: TL -> [CExtDecl]
 evalTopLevel (Enum n v na) =
-  [CDeclExt $ CDecl [CTypeSpec (CEnumType (enum n v) un)] [] $ toNI na]
+  [CDeclExt $ CDecl [
+      CStorageSpec (CTypedef un),CTypeSpec (CEnumType (enum n v) un)
+    ] [(Just (CDeclr (Just (mkIdent' n (Name 0))) [] Nothing [] un), Nothing, Nothing)] $ toNI na]
 evalTopLevel (Func n t a b na) =
   [CFDefExt $ func n t a (map evalStmt b) $ toNI na]
 evalTopLevel (Decl n t me na) =

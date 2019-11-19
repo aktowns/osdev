@@ -63,6 +63,7 @@ data TopLevel a = Enum Text [(Text, Maybe Integer)] a
                 | Func Text Type [(Text, Type)] [Statement a] a
                 | Decl Text Type (Maybe (Expression a)) a
                 | Module Text [TopLevel a] a
+                | TypeDef Text (Either Type (Expression a)) a
                 deriving (Show, Eq, Ord)
 
 type TL = TopLevel NodeAnnotation
@@ -98,6 +99,10 @@ data Statement a = Declare Text Type (Maybe (Expression a)) a
                  deriving (Show, Eq, Ord)
 
 type Stmt = Statement NodeAnnotation
+
+data Language = C
+
+data Embedded a = Embedded Language Text a
 
 instance Functor TopLevel where
   fmap f (Enum a1 a2 a3)       = Enum a1 a2 (f a3)

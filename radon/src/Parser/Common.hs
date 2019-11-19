@@ -165,6 +165,9 @@ kFor     = symbol "for"
 kModule :: Parser Text
 kModule  = symbol "module" <?> "module"
 
+kType :: Parser Text
+kType    = symbol "type" <?> "type"
+
 lineComment :: Parser ()
 lineComment = L.skipLineComment "#"
 
