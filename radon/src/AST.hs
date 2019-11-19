@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds, KindSignatures, GADTs, StandaloneDeriving #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  AST
@@ -63,7 +64,7 @@ data TopLevel a = Enum Text [(Text, Maybe Integer)] a
                 | Func Text Type [(Text, Type)] [Statement a] a
                 | Decl Text Type (Maybe (Expression a)) a
                 | Module Text [TopLevel a] a
-                | TypeDef Text (Either Type (Expression a)) a
+                | TypeDef Text (Either Type (Embedded EType a)) a
                 deriving (Show, Eq, Ord)
 
 type TL = TopLevel NodeAnnotation
@@ -100,9 +101,17 @@ data Statement a = Declare Text Type (Maybe (Expression a)) a
 
 type Stmt = Statement NodeAnnotation
 
-data Language = C
+data Language = C deriving (Show, Eq, Ord)
+data EmbeddedType = EExpr | EStmt | EType deriving (Show, Eq, Ord)
 
-data Embedded a = Embedded Language Text a
+data Embedded :: EmbeddedType -> * -> * where
+  EmbeddedExpr :: Text -> Language -> a -> Embedded EExpr a
+  EmbeddedStmt :: Text -> Language -> a -> Embedded EStmt a
+  EmbeddedType :: Text -> Language -> a -> Embedded EType a
+
+deriving instance (Eq b) => Eq (Embedded a b)
+deriving instance (Ord b) => Ord (Embedded a b)
+deriving instance (Show b) => Show (Embedded a b)
 
 instance Functor TopLevel where
   fmap f (Enum a1 a2 a3)       = Enum a1 a2 (f a3)
