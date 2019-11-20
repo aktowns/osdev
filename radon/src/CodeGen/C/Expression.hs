@@ -79,5 +79,7 @@ evalExpr (Cast ty e na) = CCast (CDecl typ [decs'] un) (evalExpr e) $ toNI na
   decs' = (Just (CDeclr Nothing decs Nothing [] un), Nothing, Nothing)
 evalExpr (MemberRef ModMem (Identifier m _) (Identifier n _) na) =
   CVar (mkIdent' (m <> "$" <> n) (Name 0)) $ toNI na
+evalExpr (MemberRef ModMem (Identifier m _) (FunCall n a _) na) =
+  CCall (CVar (mkIdent' (m <> "$" <> n) (Name 0)) un) (evalExpr <$> a) $ toNI na
 evalExpr x =
   error $ "unhandled " ++ show x

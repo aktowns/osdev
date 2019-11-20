@@ -1,0 +1,5 @@
+[C]{% #include <stdio.h> %}
+
+module Console =
+  alias printf = [C]{% printf %}
+

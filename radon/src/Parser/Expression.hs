@@ -156,5 +156,6 @@ pAssign = do
 pExpr :: Parser Expr
 pExpr = makeExprParser pTerm table >>= \case
   x@(MemberRef _ _ (Identifier _ _) _) -> return x
+  x@(MemberRef _ _ (FunCall _ _ _) _)  -> return x
   (MemberRef _ _ _ _)                  -> customFailure $ ParserError "unexpected expression in member field access"
   x -> return x
