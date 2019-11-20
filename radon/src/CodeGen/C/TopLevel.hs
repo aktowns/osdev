@@ -68,6 +68,7 @@ evalTopLevel (Decl n t me na) =
    name = mkIdent' n (Name 0)
 evalTopLevel (Module name tls na) = tls >>= evalTopLevel -- TODO: Actually namespace the stuff
 evalTopLevel (TypeDef name ty na) = [CDeclExt $ typedef ty name na]
+evalTopLevel x = error $ "unhandled: " ++ show x
 
 evalTopLevels :: [TL] -> CTranslUnit
 evalTopLevels xs = CTranslUnit (xs >>= evalTopLevel) un

@@ -25,6 +25,7 @@ import Parser.Common
 import Parser.Expression
 import Parser.Type
 import Parser.Statement
+import Parser.Embedded
 
 -- | Parses an enum
 --
@@ -134,8 +135,32 @@ pTypeDef = do
   ty2 <- pType
   return $ TypeDef ty ty2 pos
 
+pAlias :: Parser TL
+pAlias = do
+  pos <- getNA
+  _ <- kAlias
+  lang <- optional language
+  name <- identifier
+  _ <- equals
+  block <- (identifier <|> cIdentifier)
+  return $ Alias lang name block pos
+
+pImport :: Parser TL
+pImport = do
+  pos <- getNA
+  _ <- kImport
+  lang <- optional language
+  file <- (identifier <|> cIdentifier)
+  return $ Import lang file
+
 pTopLevelEntry :: Parser TL
-pTopLevelEntry = try pEnum <|> try pFunc <|> try pDecl <|> try pModule <|> pTypeDef
+pTopLevelEntry = try pEnum
+              <|> try pFunc
+              <|> try pDecl
+              <|> try pModule
+              <|> pImport
+              <|> pAlias
+              <|> pTypeDef
 
 pTopLevel :: Parser [TL]
 pTopLevel = some $ L.nonIndented scn $ pTopLevelEntry <* space

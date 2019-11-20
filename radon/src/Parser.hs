@@ -1,9 +1,9 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Parser
--- Copyright   :  Copyright (c) 2019 Ashley Towns
--- License     :  BSD-style
--- Maintainer  :  code@ashleytowns.id.au
+-- Module      : Parser
+-- Copyright   : Copyright (c) 2019 Ashley Towns
+-- License     : BSD-style
+-- Maintainer  : code@ashleytowns.id.au
 -- Stability   : experimental
 -- Portability : portable
 --

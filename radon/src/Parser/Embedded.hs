@@ -28,12 +28,9 @@ import Parser.Common
 uncurry2 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry2 f (a,b,c) = f a b c
 
-embeddedLang :: Parser Language
-embeddedLang = C <$ char 'C'
-
 embeddedBlock :: Parser (Text, Language)
 embeddedBlock = do
-  lang <- bracks embeddedLang
+  lang <- bracks language
   body <- T.pack <$> (lbraceper *> manyTill asciiChar rbraceper)
   return (body, lang)
 
@@ -45,3 +42,6 @@ pStmtEmbed = uncurry EmbeddedStmt <$> embeddedBlock
 
 pTypeEmbed :: Parser (Embedded 'EType)
 pTypeEmbed = uncurry EmbeddedType <$> embeddedBlock
+
+pLitEmbed :: Parser (Embedded 'ELit)
+pLitEmbed = uncurry EmbeddedLit <$> embeddedBlock

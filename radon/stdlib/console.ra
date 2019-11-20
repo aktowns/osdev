@@ -1,5 +1,5 @@
-[C]{% #include <stdio.h> %}
+import C stdio
 
 module Console =
-  alias printf = [C]{% printf %}
+  alias C printf = printf
 

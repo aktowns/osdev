@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds, KindSignatures, GADTs, StandaloneDeriving #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  AST
--- Copyright   :  Copyright (c) 2019 Ashley Towns
--- License     :  BSD-style
--- Maintainer  :  code@ashleytowns.id.au
+-- Module      : AST
+-- Copyright   : Copyright (c) 2019 Ashley Towns
+-- License     : BSD-style
+-- Maintainer  : code@ashleytowns.id.au
 -- Stability   : experimental
 -- Portability : portable
 --
@@ -66,6 +66,8 @@ data TopLevel a = Enum Text [(Text, Maybe Integer)] a
                 | Decl Text Type (Maybe (Expression a)) a
                 | Module Text [TopLevel a] a
                 | TypeDef Text Type a
+                | Alias (Maybe Language) Text Text a
+                | Import (Maybe Language) Text
                 deriving (Show, Eq, Ord)
 
 type TL = TopLevel NodeAnnotation
@@ -104,12 +106,13 @@ data Statement a = Declare Text Type (Maybe (Expression a)) a
 type Stmt = Statement NodeAnnotation
 
 data Language = C deriving (Show, Eq, Ord)
-data EmbeddedType = EExpr | EStmt | EType deriving (Show, Eq, Ord)
+data EmbeddedType = EExpr | EStmt | EType | ELit deriving (Show, Eq, Ord)
 
 data Embedded :: EmbeddedType -> * where
   EmbeddedExpr :: Text -> Language -> Embedded EExpr
   EmbeddedStmt :: Text -> Language -> Embedded EStmt
   EmbeddedType :: Text -> Language -> Embedded EType
+  EmbeddedLit  :: Text -> Language -> Embedded ELit
 
 deriving instance Eq (Embedded a)
 deriving instance Ord (Embedded a)

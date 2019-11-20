@@ -174,6 +174,12 @@ kModule  = symbol "module" <?> "module"
 kType :: Parser Text
 kType    = symbol "type" <?> "type"
 
+kAlias :: Parser Text
+kAlias   = symbol "alias"
+
+kImport :: Parser Text
+kImport  = symbol "import"
+
 kIf :: Parser Text
 kIf      = symbol "if"
 
@@ -223,6 +229,9 @@ identifier =
 
 cIdentifier :: Parser Text
 cIdentifier = lexeme $ T.pack <$> ((:) <$> upperChar <*> many alphaNumChar <?> "identifier")
+
+language :: Parser Language
+language = C <$ (char 'C' *> space)
 
 parens :: Parser a -> Parser a
 parens = between lparen rparen

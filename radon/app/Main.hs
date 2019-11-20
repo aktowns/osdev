@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad(foldM)
+
 import Text.PrettyPrint (render)
 
 import System.Environment (getArgs)
@@ -10,11 +12,18 @@ import Parser
 import CodeGen.C.Pretty
 import CodeGen.C.TopLevel
 
+import Resolvers.Resolver
+import Resolvers.C.FunctionAlias
+
+resolvers = [functionAliases]
+
 evalFile :: FilePath -> IO String
 evalFile fp = do
-  tls <- parseFile "stdlib/types.ra"
+  tys <- parseFile "stdlib/types.ra"
+  console <- parseFile "stdlib/console.ra"
   ast <- parseFile fp
-  return $ render $ pretty $ evalTopLevels (tls ++ ast)
+  tree <- foldM (\tree resolver -> resolve resolver tree) (tys ++ console ++ ast) resolvers
+  return $ render $ pretty $ evalTopLevels tree
 
 main :: IO ()
 main = do
