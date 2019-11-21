@@ -254,7 +254,7 @@ bracesper = between lbraceper rbraceper
 getNA :: Parser NodeAnnotation
 getNA = do
   pos <- getSourcePos
-  return $ NodeAnnotation (sourceName pos)
-                          (unPos $ sourceLine pos)
-                          (unPos $ sourceColumn pos)
+  return $ NodeAnnotation { source = NodeSource (sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
+                          , metadata = NodeMetadata { codegenIgnore = False, rewriterIgnore = False }
+                          }
 

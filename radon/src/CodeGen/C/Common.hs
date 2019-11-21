@@ -29,4 +29,5 @@ mkIdent' :: Text -> Name -> Ident
 mkIdent' x = mkIdent nopos (T.unpack x)
 
 toNI :: NodeAnnotation -> NodeInfo
-toNI NodeAnnotation{..} = mkNodeInfoOnlyPos (position 0 filename line column Nothing)
+toNI NodeAnnotation{..} = let NodeSource{..} = source in 
+    mkNodeInfoOnlyPos (position 0 filename line column Nothing)

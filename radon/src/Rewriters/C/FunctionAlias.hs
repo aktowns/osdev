@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      : Resolvers.C.FunctionAlias
+-- Module      : Rewriters.C.FunctionAlias
 -- Copyright   : Copyright (c) 2019 Ashley Towns
 -- License     : BSD-style
 -- Maintainer  : code@ashleytowns.id.au
@@ -9,7 +9,7 @@
 --
 -- Find and alias external C functions
 -----------------------------------------------------------------------------
-module Resolvers.C.FunctionAlias where
+module Rewriters.C.FunctionAlias where
 
 import Language.C
 import Language.C.Syntax
@@ -26,7 +26,7 @@ import System.IO (hClose)
 import System.IO.Temp(withSystemTempFile)
 
 import AST
-import Resolvers.Resolver
+import Rewriters.Rewriter
 
 -- | Looks for external alias references and builds aliases them with an asm label
 -- since this provides no type safety, it looks up and defines the reference for a function
@@ -53,8 +53,8 @@ data FunctionAliases = FunctionAliases { cFuncs :: Map Text CDecl
 functionAliases :: FunctionAliases
 functionAliases = FunctionAliases { cFuncs = Map.empty, aliases = Map.empty }
 
-instance Resolver FunctionAliases where
-  resolve fa xs = do
+instance Rewriter FunctionAliases where
+  rewrite fa xs = do
     headers <- catMaybes <$> mapM collectImports xs
     Right tree <- withSystemTempFile "resolver-function-alias.c" $ \fp hndl -> do
       T.hPutStrLn hndl $ T.unlines headers

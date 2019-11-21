@@ -32,8 +32,8 @@ library
                      , Parser.Statement
                      , Parser.TopLevel
                      , Parser.Type
-                     , Resolvers.C.FunctionAlias
-                     , Resolvers.Resolver
+                     , Rewriters.C.FunctionAlias
+                     , Rewriters.Rewriter
   build-depends:       base >=4.13 && <4.14
                      , megaparsec
                      , language-c

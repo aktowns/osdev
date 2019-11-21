@@ -1,3 +1,9 @@
-main(argc: Int32, argv: Ptr<Char>): Int32 =
+
+module Terminal = 
+  print(str: String): Void = 
+    [C]{% puts(str); %}
+
+
+main(argc: Int32, argv: String): Int32 =
   Console::printf("Hello World!\n")
   return 0

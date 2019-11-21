@@ -16,10 +16,16 @@ import Language.C.Syntax.AST (Annotated(..))
 
 import Data.Text (Text)
 
-data NodeAnnotation = NodeAnnotation { filename :: String
-                                     , line     :: Int
-                                     , column   :: Int
-                                     } deriving (Show)
+data NodeSource = NodeSource { filename :: String
+                             , line     :: Int
+                             , column   :: Int
+                             } deriving (Show) 
+
+data NodeMetadata = NodeMetadata { codegenIgnore  :: Bool
+                                 , rewriterIgnore :: Bool
+                                 } deriving (Show)
+
+data NodeAnnotation = NodeAnnotation { source :: NodeSource, metadata :: NodeMetadata } deriving (Show)
 
 data Type = TyVoid
           | TyChar
