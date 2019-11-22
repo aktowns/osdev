@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      : Rewriters.C.FunctionAlias
@@ -53,39 +54,15 @@ data FunctionAliases = FunctionAliases { cFuncs :: Map Text CDecl
 functionAliases :: FunctionAliases
 functionAliases = FunctionAliases { cFuncs = Map.empty, aliases = Map.empty }
 
-instance Rewriter FunctionAliases where
-  rewrite fa xs = do
-    headers <- catMaybes <$> mapM collectImports xs
-    Right tree <- withSystemTempFile "resolver-function-alias.c" $ \fp hndl -> do
+instance Extractor FunctionAliases [CExtDecl] where
+  extract fa xs = do
+    let headers = catMaybes $ collectImports <$> xs
+    Right (CTranslUnit decls _) <- withSystemTempFile "resolver-function-alias.c" $ \fp hndl -> do
       T.hPutStrLn hndl $ T.unlines headers
       hClose hndl
       parseCFile (newGCC "gcc") Nothing [] fp
-    print $ collectFunctions $ () <$ tree
-    return xs
+    return decls
 
-collectImports :: TL -> IO (Maybe Text)
-collectImports (Import (Just C) text) = return . Just $ "#include <" <> text <> ".h>"
-collectImports x = return Nothing
-
---isExtern :: [CDeclSpec] -> Bool
-isExtern xs = any extern xs
- where
-  --extern :: CDeclSpec -> Bool
-  extern (CStorageSpec (CExtern _)) = True
-  extern _ = False
-
-isFun xs = any fun xs
- where
-  fun :: (Maybe (CDeclarator a), Maybe (CInitializer a), Maybe (CExpression a)) -> Bool
-  fun (Just (CDeclr _ xs _ _ _), _, _) = any fundeclr xs
-  fun _ = False
-  fundeclr (CFunDeclr _ _ _) = True
-  fundeclr _ = False
-
---collectFunctions :: CTranslUnit -> [CDecl]
-collectFunctions (CTranslUnit xs _) = catMaybes $ map collectDecls xs
- where
-  --collectDecls :: CExtDecl -> Maybe CDecl
-  collectDecls (CDeclExt x@(CDecl sp dec _)) =
-    if isExtern sp && isFun dec then Just x else Nothing
-  collectDecls _ = Nothing
+collectImports :: TL -> Maybe Text
+collectImports (Import (Just C) text) = Just $ "#include <" <> text <> ".h>"
+collectImports x = Nothing

@@ -15,15 +15,24 @@ import CodeGen.C.TopLevel
 import Rewriters.Rewriter
 import Rewriters.C.FunctionAlias
 
-resolvers = [functionAliases]
+resolvers = []
+extractors = [functionAliases]
+
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+{-# INLINE concatMapM #-}
+concatMapM op = foldr f (return [])
+    where f x xs = do x <- op x; if null x then xs else do xs <- xs; return $ x++xs
 
 evalFile :: FilePath -> IO String
 evalFile fp = do
   tys <- parseFile "stdlib/types.ra"
   console <- parseFile "stdlib/console.ra"
   ast <- parseFile fp
-  tree <- foldM (\tree rewriter -> rewrite rewriter tree) (tys ++ console ++ ast) resolvers
-  return $ render $ pretty $ evalTopLevels tree
+  let tree = (tys ++ console ++ ast)
+  -- tree <- foldM (\tree rewriter -> rewrite rewriter tree) (tys ++ console ++ ast) resolvers
+  preamb <- concatMapM (\extractor -> extract extractor tree) extractors
+  let ctree = evalTopLevels tree
+  return $ render $ pretty $ prependC ctree preamb
 
 main :: IO ()
 main = do

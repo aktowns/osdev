@@ -140,7 +140,9 @@ pAlias = do
   pos <- getNA
   _ <- kAlias
   lang <- optional language
+  ty <- pType
   name <- identifier
+  args <- parens $ (cIdentifier <|> varargs) `sepBy` comma
   _ <- equals
   block <- (identifier <|> cIdentifier)
   return $ Alias lang name block pos

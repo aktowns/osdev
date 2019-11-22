@@ -1,5 +1,5 @@
 import C stdio
 
 module Console =
-  alias C printf = printf
+  alias C Int32 printf(String, ...) = printf
 

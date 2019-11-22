@@ -68,7 +68,52 @@ evalTopLevel (Decl n t me na) =
    name = mkIdent' n (Name 0)
 evalTopLevel (Module name tls na) = tls >>= evalTopLevel -- TODO: Actually namespace the stuff
 evalTopLevel (TypeDef name ty na) = [CDeclExt $ typedef ty name na]
+evalTopLevel (Import _ _) = [] -- TODO: handle
+evalTopLevel (Alias (Just C) from to _) = []
 evalTopLevel x = error $ "unhandled: " ++ show x
 
 evalTopLevels :: [TL] -> CTranslUnit
 evalTopLevels xs = CTranslUnit (xs >>= evalTopLevel) un
+
+prependC :: CTranslUnit -> [CExtDecl] -> CTranslUnit
+prependC (CTranslUnit decs na) xs = CTranslUnit (xs ++ decs) na
+
+alias :: Type -> Text -> [Type] -> Text -> NodeAnnotation -> CDecl
+alias retTy name args newName na = CDecl retTyp [ (Just (CDeclr (Just name') retDecs Nothing [] un), Nothing, Nothing)] $ toNI na
+ where
+  (retTyp, retDecs) = evalType retTy
+  name' = mkIdent' name (Name 0)
+
+{-
+CDecl 
+            [ CTypeSpec ( CIntType () ) ] 
+            [ 
+                ( Just 
+                    ( CDeclr 
+                        ( Just ( Ident "prontf" 232533220 () ) ) 
+                        [ CFunDeclr 
+                            ( Right 
+                                ( 
+                                    [ CDecl 
+                                        [ CTypeQual ( CConstQual () )
+                                        , CTypeSpec ( CCharType () )
+                                        ] 
+                                        [ 
+                                            ( Just 
+                                                ( CDeclr Nothing [ CPtrDeclr [] () ] Nothing [] () )
+                                            , Nothing
+                                            , Nothing
+                                            ) 
+                                        ] ()
+                                    ]
+                                , True
+                                ) 
+                            ) [] ()
+                        ] 
+                        ( Just ( CStrLit "printf" () ) ) [] ()
+                    )
+                , Nothing
+                , Nothing
+                ) 
+            ] ()
+-}

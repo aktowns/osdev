@@ -141,6 +141,9 @@ ampamp     = symbol "&&"
 caret :: Parser Text
 caret      = symbol "^"
 
+varargs :: Parser Text
+varargs    = symbol "..."
+
 kStatic :: Parser Text
 kStatic  = symbol "static" <?> "static"
 
