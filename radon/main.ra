@@ -1,3 +1,11 @@
+union Option =
+  Some(x: Int32)
+  None
+
+struct Testing =
+  someField: Int32
+
 main(argc: Int32, argv: String): Int32 =
-  Console::printf("Hello World!\n")
+  Console::printf("Hello %s!\n", "World")
+  Console::putchar('a')
   return 0

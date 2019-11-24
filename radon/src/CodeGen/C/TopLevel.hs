@@ -12,7 +12,9 @@
 module CodeGen.C.TopLevel where
 
 import Data.Functor ((<&>))
+import Data.String (IsString)
 import Data.Text (Text)
+import qualified Data.Text as T
 
 import Language.C.Data.Name
 import Language.C.Syntax.AST
@@ -46,74 +48,51 @@ typedef ty name na = CDecl (CStorageSpec (CTypedef un) : t')
     [(Just (CDeclr (Just (mkIdent' name (Name 0))) d Nothing [] un), Nothing, Nothing)] $ toNI na
  where (t', d) = evalType ty
 
-func :: Text -> Type -> [(Text, Type)] -> [CBlockItem] -> NodeInfo -> CFunDef
-func name typ args body ni =
+func :: Text -> Type -> ([(Text, Type)], Bool) -> [CBlockItem] -> NodeInfo -> CFunDef
+func name typ (args, vararg) body ni =
   CFunDef typ' (CDeclr (Just name') (args' ++ decs) Nothing [] ni) [] (CCompound [] body un) ni
  where
   name' = mkIdent' name (Name 0)
   (typ', decs)  = evalType typ
   args' = [CFunDeclr (Right (evalArgs args, False)) [] un]
 
-evalTopLevel :: TL -> [CExtDecl]
-evalTopLevel (Enum n v na) =
+prefix :: (Semigroup a, IsString a) => Maybe a -> a -> a
+prefix (Just x) y = x <> "$" <> y
+
+evalTopLevel :: Maybe Text -> TL -> [CExtDecl]
+evalTopLevel pfx (Enum n v na) =
   [CDeclExt $ CDecl [
       CStorageSpec (CTypedef un),CTypeSpec (CEnumType (enum n v) un)
     ] [(Just (CDeclr (Just (mkIdent' n (Name 0))) [] Nothing [] un), Nothing, Nothing)] $ toNI na]
-evalTopLevel (Func n t a b na) =
+evalTopLevel pfx (Func n t a b na) =
   [CFDefExt $ func n t a (map evalStmt b) $ toNI na]
-evalTopLevel (Decl n t me na) =
+evalTopLevel pfx (Decl n t me na) =
   [CDeclExt $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), initExpr me, Nothing)] $ toNI na]
  where
    (typ, decs) = evalType t
    name = mkIdent' n (Name 0)
-evalTopLevel (Module name tls na) = tls >>= evalTopLevel -- TODO: Actually namespace the stuff
-evalTopLevel (TypeDef name ty na) = [CDeclExt $ typedef ty name na]
-evalTopLevel (Import _ _) = [] -- TODO: handle
-evalTopLevel (Alias (Just C) from to _) = []
-evalTopLevel x = error $ "unhandled: " ++ show x
+evalTopLevel _ (Module name tls na) = tls >>= (evalTopLevel $ Just name)
+evalTopLevel pfx (TypeDef name ty na) = [CDeclExt $ typedef ty name na]
+evalTopLevel _ (Import _ _) = [] -- TODO: handle
+evalTopLevel pfx (Alias (Just C) (retTy, from, args) to na) = [CDeclExt $ alias retTy from args (prefix pfx to) na]
+evalTopLevel _ x = error $ "unhandled: " ++ show x
 
 evalTopLevels :: [TL] -> CTranslUnit
-evalTopLevels xs = CTranslUnit (xs >>= evalTopLevel) un
+evalTopLevels xs = CTranslUnit (xs >>= evalTopLevel Nothing) un
 
 prependC :: CTranslUnit -> [CExtDecl] -> CTranslUnit
 prependC (CTranslUnit decs na) xs = CTranslUnit (xs ++ decs) na
 
-alias :: Type -> Text -> [Type] -> Text -> NodeAnnotation -> CDecl
-alias retTy name args newName na = CDecl retTyp [ (Just (CDeclr (Just name') retDecs Nothing [] un), Nothing, Nothing)] $ toNI na
+evalAliasArgs :: [Type] -> [CDecl]
+evalAliasArgs = map eval
+ where
+   eval t = let (t', d) = evalType t in
+     CDecl t' [(Just (CDeclr Nothing d Nothing [] un), Nothing, Nothing)] un
+
+alias :: Type -> Text -> ([Type], Bool) -> Text -> NodeAnnotation -> CDecl
+alias retTy name (args, vararg) newName na = CDecl retTyp [ (Just (CDeclr (Just name') (args' ++ retDecs) (Just old') [] un), Nothing, Nothing)] $ toNI na
  where
   (retTyp, retDecs) = evalType retTy
-  name' = mkIdent' name (Name 0)
-
-{-
-CDecl 
-            [ CTypeSpec ( CIntType () ) ] 
-            [ 
-                ( Just 
-                    ( CDeclr 
-                        ( Just ( Ident "prontf" 232533220 () ) ) 
-                        [ CFunDeclr 
-                            ( Right 
-                                ( 
-                                    [ CDecl 
-                                        [ CTypeQual ( CConstQual () )
-                                        , CTypeSpec ( CCharType () )
-                                        ] 
-                                        [ 
-                                            ( Just 
-                                                ( CDeclr Nothing [ CPtrDeclr [] () ] Nothing [] () )
-                                            , Nothing
-                                            , Nothing
-                                            ) 
-                                        ] ()
-                                    ]
-                                , True
-                                ) 
-                            ) [] ()
-                        ] 
-                        ( Just ( CStrLit "printf" () ) ) [] ()
-                    )
-                , Nothing
-                , Nothing
-                ) 
-            ] ()
--}
+  name' = mkIdent' newName (Name 0)
+  old' = CStrLit (cString $ T.unpack name) un
+  args' = [CFunDeclr (Right (evalAliasArgs args, vararg)) [] un]

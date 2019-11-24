@@ -24,12 +24,11 @@ pUnaryType :: Parser Type
 pUnaryType = cIdentifier <&> \case
   "Void"   -> TyVoid
   "Char"   -> TyChar
-  "String" -> TyPtr TyChar
   n        -> TyDef n
 
 pWrapType :: Parser Type
 pWrapType = do
-  outer <- symbol "Ptr"
+  _ <- symbol "Ptr"
   inner <- angles pType
   return $ TyPtr inner
 

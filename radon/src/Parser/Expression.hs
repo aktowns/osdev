@@ -15,7 +15,6 @@ module Parser.Expression where
 import Data.Functor ((<&>))
 import Control.Applicative hiding (some, many)
 import Control.Monad.Combinators.Expr
-import Data.Text (Text)
 
 import Text.Megaparsec
 import Text.Megaparsec.Char (char)

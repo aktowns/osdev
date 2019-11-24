@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Parser.TopLevel
@@ -17,7 +18,6 @@ import Data.Maybe (fromMaybe)
 
 import Text.Megaparsec
 import Text.Megaparsec.Char (space)
-import Text.Megaparsec.Debug
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
@@ -25,7 +25,6 @@ import Parser.Common
 import Parser.Expression
 import Parser.Type
 import Parser.Statement
-import Parser.Embedded
 
 -- | Parses an enum
 --
@@ -49,6 +48,51 @@ pEnum = L.indentBlock scn preamb
 
   pEnumBody :: Parser (Text, Maybe Integer)
   pEnumBody = (,) <$> cIdentifier <*> optional (equals *> integer)
+
+-- | Parses a struct
+--
+-- > struct StructType =
+-- >   field1: Int32
+-- >   field2: Int64
+--
+pStruct :: Parser TL
+pStruct = L.indentBlock scn preamb
+ where
+  preamb = do
+    pos <- getNA
+    _ <- kStruct
+    name <- cIdentifier
+    _ <- equals
+    return $ L.IndentSome Nothing (\x -> return $ Struct name x pos) pStructBody
+
+  pStructBody :: Parser (Text, Type)
+  pStructBody = (,) <$> identifier <*> (colon *> pType)
+
+-- | Parses a union
+--
+-- > union UnionType =
+-- >   ConStr1(x: Int32, y: Int32)
+-- >   ConStr2(y: Int64)
+-- >   ConStr3
+--
+pUnion :: Parser TL
+pUnion = L.indentBlock scn preamb
+ where
+  preamb = do
+    pos <- getNA
+    _ <- kUnion
+    name <- cIdentifier
+    _ <- equals
+    return $ L.IndentSome Nothing (\x -> return $ Union name x pos) pUnionBody
+
+  pUnionBody :: Parser (Text, [(Text, Type)])
+  pUnionBody = (,) <$> cIdentifier <*> (fromMaybe [] <$> optional (parens pArgs))
+
+  pArg :: Parser (Text, Type)
+  pArg = (,) <$> identifier <* colon <*> pType
+
+  pArgs :: Parser [(Text, Type)]
+  pArgs = pArg `sepBy` comma
 
 -- | Parses a function
 --
@@ -77,7 +121,7 @@ pFunc = try pFuncSmall <|> pFuncFull
       (pos, quals, name, args, typ) <- pFuncPreamb
       return $ L.IndentSome Nothing (\x -> return $ Func name (foldr ($) typ quals) args x pos) pStmt
 
-  pFuncPreamb :: Parser (NodeAnnotation, [Type -> Type], Text, [(Text, Type)], Type)
+  pFuncPreamb :: Parser (NodeAnnotation, [Type -> Type], Text, ([(Text, Type)], Bool), Type)
   pFuncPreamb = do
       pos <- getNA
       quals <- many pFunQual
@@ -86,10 +130,16 @@ pFunc = try pFuncSmall <|> pFuncFull
       _ <- colon
       typ <- pType
       _ <- equals
-      return (pos, quals, name, fromMaybe [] args, typ)
+      return (pos, quals, name, fromMaybe ([], False) args, typ)
    where
-    pArgs :: Parser [(Text, Type)]
-    pArgs = ((,) <$> (identifier <* colon) <*> pType) `sepBy` comma
+    pArg :: Parser (Text, Type)
+    pArg = (,) <$> identifier <* colon <*> pType
+
+    pArgs :: Parser ([(Text, Type)], Bool)
+    pArgs = try varArgs <|> justArgs
+     where
+      justArgs = (, False) <$> pArg `sepBy` comma
+      varArgs  = (,) <$> (pArg `endBy` comma) <*> (True <$ varargs)
 
 -- | Parses a val declaration
 --
@@ -142,14 +192,19 @@ pAlias = do
   lang <- optional language
   ty <- pType
   name <- identifier
-  args <- parens $ (cIdentifier <|> varargs) `sepBy` comma
+  args <- optional $ parens pArgs
   _ <- equals
   block <- (identifier <|> cIdentifier)
-  return $ Alias lang name block pos
+  return $ Alias lang (ty, name, fromMaybe ([], False) args) block pos
+ where
+  pArgs :: Parser ([Type], Bool)
+  pArgs = try varArgs <|> justArgs
+   where
+    justArgs = (, False) <$> pType `sepBy` comma
+    varArgs  = (,) <$> (pType `endBy` comma) <*> (True <$ varargs)
 
 pImport :: Parser TL
 pImport = do
-  pos <- getNA
   _ <- kImport
   lang <- optional language
   file <- (identifier <|> cIdentifier)
@@ -160,6 +215,8 @@ pTopLevelEntry = try pEnum
               <|> try pFunc
               <|> try pDecl
               <|> try pModule
+              <|> try pStruct
+              <|> try pUnion
               <|> pImport
               <|> pAlias
               <|> pTypeDef

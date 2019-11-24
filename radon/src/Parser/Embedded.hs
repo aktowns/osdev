@@ -12,15 +12,11 @@
 -----------------------------------------------------------------------------
 module Parser.Embedded where
 
-import Data.Functor ((<&>))
-import Control.Applicative hiding (some, many)
-import Control.Monad.Combinators.Expr
 import Data.Text (Text)
 import qualified Data.Text as T
 
 import Text.Megaparsec
-import Text.Megaparsec.Debug
-import Text.Megaparsec.Char (asciiChar, space, char)
+import Text.Megaparsec.Char (asciiChar)
 
 import AST
 import Parser.Common

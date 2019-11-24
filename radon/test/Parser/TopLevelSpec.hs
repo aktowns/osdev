@@ -21,14 +21,21 @@ spec = do
           1
       |]
       parseAST pFunc source `shouldParse`
-        Func "hello" TyVoid [] [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
+        Func "hello" TyVoid ([], False) [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
     it "parses a function with an argument" $ do
       let source = deindent [r|
         hello(argc: Int): Void =
           1
       |]
       parseAST pFunc source `shouldParse`
-        Func "hello" TyVoid [("argc",TyDef "Int")] [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
+        Func "hello" TyVoid ([("argc",TyDef "Int")], False) [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
+    it "parses a function with varargs" $ do
+      let source = deindent [r|
+        hello(argc: Int, ...): Void =
+          1
+      |]
+      parseAST pFunc source `shouldParse`
+        Func "hello" TyVoid ([("argc",TyDef "Int")], True) [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
     it "parses a function with multiple statements" $ do
       let source = deindent [r|
         hello: Void =
@@ -36,7 +43,7 @@ spec = do
           x = 2
       |]
       parseAST pFunc source `shouldParse`
-        Func "hello" TyVoid [] [
+        Func "hello" TyVoid ([], False) [
           Declare "x" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) (),
           SExpr (Assign (Identifier "x" ()) (Literal (IntLiteral 2 Dec []) ()) ()) ()
         ] ()
@@ -92,7 +99,7 @@ spec = do
           initialize: Void =
             SomeGlobal = 1
       |]
-      parseAST pModule source `shouldParse` Module "ABC" [
-        Decl "ItsEasy" (TyDef "Int32") (Just (Literal (IntLiteral 0 Dec []) ())) (),
-        Decl "As123" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) ()
+      parseAST pModule source `shouldParse` Module "MyModule" [
+        Decl "SomeGlobal" (TyDef "Int32") (Just (Literal (IntLiteral 0 Dec []) ())) (),
+        Func "initialize" TyVoid ([],False) [SExpr (Assign (Identifier "SomeGlobal" ()) (Literal (IntLiteral 1 Dec []) ()) ()) ()] ()
        ] ()

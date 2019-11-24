@@ -19,7 +19,7 @@ import Data.Text (Text)
 data NodeSource = NodeSource { filename :: String
                              , line     :: Int
                              , column   :: Int
-                             } deriving (Show) 
+                             } deriving (Show)
 
 data NodeMetadata = NodeMetadata { codegenIgnore  :: Bool
                                  , rewriterIgnore :: Bool
@@ -68,11 +68,13 @@ data Fix = UnaryPrefix
          deriving (Show, Eq, Ord)
 
 data TopLevel a = Enum Text [(Text, Maybe Integer)] a
-                | Func Text Type [(Text, Type)] [Statement a] a
+                | Union Text [(Text, [(Text, Type)])] a
+                | Struct Text [(Text, Type)] a
+                | Func Text Type ([(Text, Type)], Bool) [Statement a] a
                 | Decl Text Type (Maybe (Expression a)) a
                 | Module Text [TopLevel a] a
                 | TypeDef Text Type a
-                | Alias (Maybe Language) Text Text a
+                | Alias (Maybe Language) (Type, Text, ([Type], Bool)) Text a
                 | Import (Maybe Language) Text
                 deriving (Show, Eq, Ord)
 

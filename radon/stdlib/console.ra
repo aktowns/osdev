@@ -2,4 +2,6 @@ import C stdio
 
 module Console =
   alias C Int32 printf(String, ...) = printf
+  alias C Int32 puts(String)        = puts
+  alias C Int32 putchar(Char)       = putchar
 

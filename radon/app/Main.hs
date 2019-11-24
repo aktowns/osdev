@@ -14,20 +14,19 @@ import CodeGen.C.TopLevel
 
 import Rewriters.Rewriter
 import Rewriters.C.FunctionAlias
+import Analyzers.Analyzer
+import Analyzers.Graphviz
 
 resolvers = []
 extractors = [functionAliases]
-
-concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
-{-# INLINE concatMapM #-}
-concatMapM op = foldr f (return [])
-    where f x xs = do x <- op x; if null x then xs else do xs <- xs; return $ x++xs
+analyzers = [graph]
 
 evalFile :: FilePath -> IO String
 evalFile fp = do
   tys <- parseFile "stdlib/types.ra"
   console <- parseFile "stdlib/console.ra"
   ast <- parseFile fp
+  analyze (head analyzers) ast
   let tree = (tys ++ console ++ ast)
   -- tree <- foldM (\tree rewriter -> rewrite rewriter tree) (tys ++ console ++ ast) resolvers
   preamb <- concatMapM (\extractor -> extract extractor tree) extractors

@@ -1,0 +1,9 @@
+import C curl/curl
+
+module Request =
+  performGetRequest(url: String): Response =
+    val curl: Ptr<CURL> = curl_easy_init()
+    curl_easy_setopt(curl, CURLOPT_URL, url)
+    val CURLcode res = curl_easy_perform(curl)
+    curl_easy_cleanup(curl)
+    

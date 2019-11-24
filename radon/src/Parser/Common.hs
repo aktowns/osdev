@@ -22,10 +22,10 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
 
-data ParserError = ParserError Text deriving (Show, Eq, Ord)
+newtype ParserError = ParserError Text deriving (Show, Eq, Ord)
 
 instance ShowErrorComponent ParserError where
-  showErrorComponent (ParserError msg) = T.unpack $ msg
+  showErrorComponent (ParserError msg) = T.unpack msg
   errorComponentLen _ = 1
 
 type Parser = Parsec ParserError Text
@@ -158,6 +158,12 @@ kFunc    = symbol "func"
 
 kEnum :: Parser Text
 kEnum    = symbol "enum" <?> "enum"
+
+kStruct :: Parser Text
+kStruct  = symbol "struct" <?> "struct"
+
+kUnion :: Parser Text
+kUnion   = symbol "union" <?> "union"
 
 kReturn :: Parser Text
 kReturn  = symbol "return"

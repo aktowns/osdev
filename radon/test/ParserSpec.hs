@@ -35,7 +35,7 @@ spec =
           x = 2
       |]
       parseASTList pTopLevel source `shouldParse`
-        [Func "hello" TyVoid [] [
+        [Func "hello" TyVoid ([], False) [
           Declare "x" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) (),
           SExpr (Assign (Identifier "x" ()) (Literal (IntLiteral 2 Dec []) ()) ()) ()
         ] ()]
@@ -48,10 +48,10 @@ spec =
           y = 3
       |]
       parseASTList pTopLevel source `shouldParse`
-        [Func "hello" TyVoid [] [
+        [Func "hello" TyVoid ([], False) [
             SExpr (Assign (Identifier "x" ()) (Literal (IntLiteral 2 Dec []) ()) ()) ()
           ] (),
-         Func "world" TyVoid [] [
+         Func "world" TyVoid ([], False) [
             SExpr (Assign (Identifier "y" ()) (Literal (IntLiteral 3 Dec []) ()) ()) ()
           ]
         ()]

@@ -17,7 +17,9 @@ description:
   A toy compile to C language that xenon is implemented in.
 
 library
-  exposed-modules:     AST
+  exposed-modules:     Analyzers.Analyzer
+                     , Analyzers.Graphviz
+                     , AST
                      , CodeGen
                      , CodeGen.C.Common
                      , CodeGen.C.Expression
@@ -45,6 +47,8 @@ library
                      , containers
                      , parser-combinators
                      , temporary
+                     , dot
+                     , random
   hs-source-dirs:      src
   ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Widentities -Wredundant-constraints -Wmonomorphism-restriction -Wmissing-local-signatures
   default-language:    Haskell2010
@@ -57,6 +61,7 @@ executable radon
                      , pretty
   hs-source-dirs:      app
   default-language:    Haskell2010
+  ghc-options:         -Wall -O2 -threaded
 
 test-suite test-radon
   type:                exitcode-stdio-1.0

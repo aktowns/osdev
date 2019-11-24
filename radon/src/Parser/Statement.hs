@@ -14,7 +14,6 @@ module Parser.Statement where
 import Control.Applicative hiding (some, many)
 
 import Text.Megaparsec
-import Text.Megaparsec.Char (space)
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
