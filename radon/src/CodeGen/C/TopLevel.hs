@@ -71,6 +71,8 @@ evalTopLevel pfx (Decl n t me na) =
  where
    (typ, decs) = evalType t
    name = mkIdent' n (Name 0)
+evalTopLevel pfx (Struct n fields na) = [CDeclExt $ struct n fields na True]
+evalTopLevel pfx (Union n cons na)    = [CDeclExt $ union n cons na]
 evalTopLevel _ (Module name tls na) = tls >>= (evalTopLevel $ Just name)
 evalTopLevel pfx (TypeDef name ty na) = [CDeclExt $ typedef ty name na]
 evalTopLevel _ (Import _ _) = [] -- TODO: handle
@@ -96,3 +98,20 @@ alias retTy name (args, vararg) newName na = CDecl retTyp [ (Just (CDeclr (Just 
   name' = mkIdent' newName (Name 0)
   old' = CStrLit (cString $ T.unpack name) un
   args' = [CFunDeclr (Right (evalAliasArgs args, vararg)) [] un]
+
+struct n f na td = CDecl (typedef ++ [ CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ map field f) [] un) un) 
+                         ]) [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
+ where
+  typedef = if td then [CStorageSpec (CTypedef un)] else []
+  field (n', t) = CDecl ty [(Just $ CDeclr (Just $ mkIdent' n' (Name 0)) tyDecs Nothing [] un, Nothing, Nothing)] un
+   where 
+    (ty, tyDecs) = evalType t
+
+
+union n c na = CDecl [ CStorageSpec (CTypedef un) 
+                     , CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ tag : (map cons c)) [] un) un) 
+                     ] [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
+  where
+    cons (n', fields) = struct n' fields na False
+    tag = CDecl [CTypeSpec (CTypeDef (mkIdent' "UInt8" (Name 0)) un)] 
+                [(Just (CDeclr (Just (mkIdent' "_$tag" (Name 0))) [] Nothing [] un), Nothing, Nothing)] un
