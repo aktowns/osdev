@@ -11,7 +11,6 @@
 -----------------------------------------------------------------------------
 module CodeGen.C.Expression where
 
-import Data.Text (Text)
 import qualified Data.Text as T
 
 import Language.C.Data.Name
@@ -59,7 +58,7 @@ evalExpr (Literal (IntLiteral i rep typ) na) =
   CConst (CIntConst (CInteger i (evalIntRep rep) (evalIntType typ)) $ toNI na)
 evalExpr (Literal (StrLiteral s) na) =
   CConst (CStrConst (cString $ T.unpack s) $ toNI na)
-evalExpr (Literal (CharLiteral c) na) = 
+evalExpr (Literal (CharLiteral c) na) =
   CConst (CCharConst (cChar c) $ toNI na)
 evalExpr (Binary op e1 e2 na) =
   evalBinary op e1 e2 $ toNI na
@@ -76,6 +75,7 @@ evalExpr (Assign n v na) =
 evalExpr (Cast ty e na) = CCast (CDecl typ [decs'] un) (evalExpr e) $ toNI na
  where
   (typ, decs)  = evalType ty
+  decs' :: (Maybe (CDeclarator NodeInfo), Maybe a1, Maybe a2)
   decs' = (Just (CDeclr Nothing decs Nothing [] un), Nothing, Nothing)
 evalExpr (MemberRef ModMem (Identifier m _) (Identifier n _) na) =
   CVar (mkIdent' (m <> "$" <> n) (Name 0)) $ toNI na

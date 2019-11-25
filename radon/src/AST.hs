@@ -35,7 +35,7 @@ data Type = TyVoid
           | TyStatic Type
           | TyInline Type
           | TyConst Type
-          | TyEmbedded (Embedded EType)
+          | TyEmbedded (Embedded 'EType)
           deriving (Show, Eq, Ord)
 
 data BinaryOp = Add
@@ -75,7 +75,7 @@ data TopLevel a = Enum Text [(Text, Maybe Integer)] a
                 | Module Text [TopLevel a] a
                 | TypeDef Text Type a
                 | Alias (Maybe Language) (Type, Text, ([Type], Bool)) Text a
-                | Import (Maybe Language) Text
+                | Import (Maybe Language) Text a
                 deriving (Show, Eq, Ord)
 
 type TL = TopLevel NodeAnnotation
@@ -117,10 +117,10 @@ data Language = C deriving (Show, Eq, Ord)
 data EmbeddedType = EExpr | EStmt | EType | ELit deriving (Show, Eq, Ord)
 
 data Embedded :: EmbeddedType -> * where
-  EmbeddedExpr :: Text -> Language -> Embedded EExpr
-  EmbeddedStmt :: Text -> Language -> Embedded EStmt
-  EmbeddedType :: Text -> Language -> Embedded EType
-  EmbeddedLit  :: Text -> Language -> Embedded ELit
+  EmbeddedExpr :: Text -> Language -> Embedded 'EExpr
+  EmbeddedStmt :: Text -> Language -> Embedded 'EStmt
+  EmbeddedType :: Text -> Language -> Embedded 'EType
+  EmbeddedLit  :: Text -> Language -> Embedded 'ELit
 
 deriving instance Eq (Embedded a)
 deriving instance Ord (Embedded a)
@@ -131,12 +131,22 @@ instance Functor TopLevel where
   fmap f (Func a1 a2 a3 a4 a5) = Func a1 a2 a3 (fmap f <$> a4) (f a5)
   fmap f (Decl a1 a2 a3 a4)    = Decl a1 a2 ((fmap . fmap) f a3) (f a4)
   fmap f (Module a1 a2 a3)     = Module a1 ((fmap . fmap) f a2) (f a3)
+  fmap f (Union a1 a2 a3)      = Union a1 a2 (f a3)
+  fmap f (Struct a1 a2 a3)     = Struct a1 a2 (f a3)
+  fmap f (TypeDef a1 a2 a3)    = TypeDef a1 a2 (f a3)
+  fmap f (Alias a1 a2 a3 a4)   = Alias a1 a2 a3 (f a4)
+  fmap f (Import a1 a2 a3)     = Import a1 a2 (f a3)
 
 instance Annotated TopLevel where
   annotation (Enum _ _ n)     = n
   annotation (Func _ _ _ _ n) = n
   annotation (Decl _ _ _ n)   = n
   annotation (Module _ _ n)   = n
+  annotation (Union _ _ n)    = n
+  annotation (Struct _ _ n)   = n
+  annotation (TypeDef _ _ n)  = n
+  annotation (Alias _ _ _ n)  = n
+  annotation (Import _ _ n)   = n
 
   amap f (Enum a1 a2 a3)       = Enum a1 a2 $ f a3
   amap f (Func a1 a2 a3 a4 a5) = Func a1 a2 a3 a4 $ f a5

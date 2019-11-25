@@ -63,5 +63,5 @@ instance Extractor FunctionAliases [CExtDecl] where
     return decls
 
 collectImports :: TL -> Maybe Text
-collectImports (Import (Just C) text) = Just $ "#include <" <> text <> ".h>"
+collectImports (Import (Just C) text _) = Just $ "#include <" <> text <> ".h>"
 collectImports _ = Nothing

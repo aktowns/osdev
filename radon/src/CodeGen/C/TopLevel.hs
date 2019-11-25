@@ -76,7 +76,7 @@ evalTopLevel pfx (Struct n fields na) = [CDeclExt $ struct (prefix pfx n) fields
 evalTopLevel pfx (Union n cons na)    = [CDeclExt $ union (prefix pfx n) cons na]
 evalTopLevel _ (Module name tls _) = tls >>= (evalTopLevel $ Just name)
 evalTopLevel pfx (TypeDef name ty na) = [CDeclExt $ typedef ty (prefix pfx name) na]
-evalTopLevel _ (Import _ _) = [] -- TODO: handle
+evalTopLevel _ (Import _ _ _) = [] -- TODO: handle
 evalTopLevel pfx (Alias (Just C) (retTy, from, args) to na) = [CDeclExt $ alias retTy from args (prefix pfx to) na]
 evalTopLevel _ x = error $ "unhandled: " ++ show x
 

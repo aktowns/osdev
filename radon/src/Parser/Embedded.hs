@@ -21,9 +21,6 @@ import Text.Megaparsec.Char (asciiChar)
 import AST
 import Parser.Common
 
-uncurry2 :: (a -> b -> c -> d) -> (a, b, c) -> d
-uncurry2 f (a,b,c) = f a b c
-
 embeddedBlock :: Parser (Text, Language)
 embeddedBlock = do
   lang <- bracks language

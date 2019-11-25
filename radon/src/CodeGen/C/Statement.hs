@@ -28,6 +28,7 @@ declare t n v ni = CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pva
  where
   name = mkIdent' n (Name 0)
   (typ, decs)  = evalType t
+  pval :: Functor f => f (CExpression NodeInfo) -> f (CInitializer NodeInfo)
   pval val = val <&> \e -> CInitExpr e un
 
 evalStmt :: Stmt -> CBlockItem

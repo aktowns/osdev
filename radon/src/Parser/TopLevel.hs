@@ -205,10 +205,11 @@ pAlias = do
 
 pImport :: Parser TL
 pImport = do
+  pos <- getNA
   _ <- kImport
   lang <- optional language
   file <- (identifier <|> cIdentifier)
-  return $ Import lang file
+  return $ Import lang file pos
 
 pTopLevelEntry :: Parser TL
 pTopLevelEntry = try pEnum

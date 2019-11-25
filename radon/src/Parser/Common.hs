@@ -33,168 +33,219 @@ type Parser = Parsec ParserError Text
 --------------------
 -- symbols
 ----
+-- | :
 colon :: Parser Text
 colon      = symbol ":"
 
+-- | ::
 coloncolon :: Parser Text
 coloncolon = symbol "::"
 
+-- | ;
 semi :: Parser Text
 semi       = symbol ";"
 
+-- | .
 dot :: Parser Text
 dot        = symbol "."
 
+-- | (
 lparen :: Parser Text
 lparen     = symbol "("
 
+-- | )
 rparen :: Parser Text
 rparen     = symbol ")"
 
+-- | <
 langle :: Parser Text
 langle     = symbol "<"
 
+-- | >
 rangle :: Parser Text
 rangle     = symbol ">"
 
+-- | {
 lbrace :: Parser Text
 lbrace     = symbol "{"
 
+-- | }
 rbrace :: Parser Text
 rbrace     = symbol "}"
 
+-- | [
 lbrack :: Parser Text
 lbrack     = symbol "["
 
+-- | ]
 rbrack :: Parser Text
 rbrack     = symbol "]"
 
+-- | {%
 lbraceper :: Parser Text
 lbraceper  = symbol "{%"
 
+-- | %}
 rbraceper :: Parser Text
 rbraceper  = symbol "%}"
 
+-- | <-
 larrow :: Parser Text
 larrow     = symbol "<-"
 
+-- | ->
 rarrow :: Parser Text
 rarrow     = symbol "->"
 
+-- | =
 equals :: Parser Text
 equals     = symbol "="
 
+-- | ==
 eqeq :: Parser Text
 eqeq       = symbol "=="
 
+-- | !=
 neq :: Parser Text
 neq        = symbol "!="
 
+-- | <=
 langleeq :: Parser Text
 langleeq   = symbol "<="
 
+-- | >=
 rangleeq :: Parser Text
 rangleeq   = symbol ">="
 
+-- | ,
 comma :: Parser Text
 comma      = symbol ","
 
+-- | +
 plus :: Parser Text
 plus       = symbol "+"
 
+-- | ++
 plusplus :: Parser Text
 plusplus   = symbol "++"
 
+-- | -
 minus :: Parser Text
 minus      = symbol "-"
 
+-- | --
 minusminus :: Parser Text
 minusminus = symbol "--"
 
+-- | *
 star :: Parser Text
 star       = symbol "*"
 
+-- | /
 fslash :: Parser Text
 fslash     = symbol "/"
 
+-- | \
 bslash :: Parser Text
 bslash     = symbol "\\"
 
+-- | <<
 shiftl :: Parser Text
 shiftl     = symbol "<<"
 
+-- | >>
 shiftr :: Parser Text
 shiftr     = symbol ">>"
 
+-- | |
 pipe :: Parser Text
 pipe       = symbol "|"
 
+-- | ||
 pipepipe :: Parser Text
 pipepipe   = symbol "||"
 
+-- | &
 amp :: Parser Text
 amp        = symbol "&"
 
+-- | &&
 ampamp :: Parser Text
 ampamp     = symbol "&&"
 
+-- | ^
 caret :: Parser Text
 caret      = symbol "^"
 
+-- | ...
 varargs :: Parser Text
 varargs    = symbol "..."
 
+-- | static
 kStatic :: Parser Text
 kStatic  = symbol "static" <?> "static"
 
+-- | inline
 kInline :: Parser Text
 kInline  = symbol "inline" <?> "inline"
 
+-- | const
 kConst :: Parser Text
 kConst   = symbol "const" <?> "const"
 
-kFunc :: Parser Text
-kFunc    = symbol "func"
-
+-- | enum
 kEnum :: Parser Text
 kEnum    = symbol "enum" <?> "enum"
 
+-- | struct
 kStruct :: Parser Text
 kStruct  = symbol "struct" <?> "struct"
 
+-- | union
 kUnion :: Parser Text
 kUnion   = symbol "union" <?> "union"
 
+-- | return
 kReturn :: Parser Text
 kReturn  = symbol "return"
 
+-- | val
 kVal :: Parser Text
 kVal     = symbol "val" <?> "var"
 
+-- | while
 kWhile :: Parser Text
 kWhile   = symbol "while"
 
+-- | for
 kFor :: Parser Text
 kFor     = symbol "for"
 
+-- | module
 kModule :: Parser Text
 kModule  = symbol "module" <?> "module"
 
+-- | type
 kType :: Parser Text
 kType    = symbol "type" <?> "type"
 
+-- | alias
 kAlias :: Parser Text
 kAlias   = symbol "alias"
 
+-- | import
 kImport :: Parser Text
 kImport  = symbol "import"
 
+-- | if
 kIf :: Parser Text
 kIf      = symbol "if"
 
+-- | elif
 kElif :: Parser Text
 kElif    = symbol "elif"
 
+-- | else
 kElse :: Parser Text
 kElse    = symbol "else"
 

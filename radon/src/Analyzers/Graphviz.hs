@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      : Analyzers.Graphviz
+-- Copyright   : Copyright (c) 2019 Ashley Towns
+-- License     : BSD-style
+-- Maintainer  : code@ashleytowns.id.au
+-- Stability   : experimental
+-- Portability : portable
+--
+-- Generates dot graphs of the syntax tree
+-----------------------------------------------------------------------------
 module Analyzers.Graphviz where
 
 import qualified Dot as D
