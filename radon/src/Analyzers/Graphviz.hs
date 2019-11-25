@@ -2,9 +2,7 @@ module Analyzers.Graphviz where
 
 import qualified Dot as D
 import Data.Text (Text)
-import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import Control.Monad (replicateM)
 
 import System.Random
@@ -27,17 +25,26 @@ instance Analyzer Graph where
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
 {-# INLINE concatMapM #-}
 concatMapM op = foldr f (return [])
-    where f x xs = do x <- op x; if null x then xs else do xs <- xs; return $ x++xs
+ where
+  f x xs = do
+    x' <- op x
+    if null x' then xs else do
+      xs' <- xs
+      return $ x'++xs'
 
+freshId :: IO D.NodeId
 freshId = do
   str <- T.pack <$> replicateM 12 (randomRIO ('a', 'z'))
   return $ D.NodeId (D.Id str) Nothing
 
+stmt :: Text -> D.NodeId -> D.Statement
 stmt n i = D.StatementNode $ D.NodeStatement i [ D.Attribute "label" $ D.Id n
                                                , D.Attribute "fontsize" "10"
                                                , D.Attribute "fixedsize" "true"
                                                , D.Attribute "width" "1.0"
                                                ]
+
+nstmt :: Text -> D.NodeId -> D.Statement
 nstmt n i = D.StatementNode $ D.NodeStatement i [ D.Attribute "label" $ D.Id n
                                                 , D.Attribute "color" "blue"
                                                 , D.Attribute "shape" "box"
@@ -45,6 +52,8 @@ nstmt n i = D.StatementNode $ D.NodeStatement i [ D.Attribute "label" $ D.Id n
                                                 , D.Attribute "fixedsize" "true"
                                                 , D.Attribute "width" "0.9"
                                                 ]
+
+gstmt :: Text -> D.NodeId -> D.Statement
 gstmt n i = D.StatementNode $ D.NodeStatement i [ D.Attribute "label" $ D.Id n
                                                 , D.Attribute "color" "red"
                                                 , D.Attribute "shape" "diamond"
@@ -52,7 +61,11 @@ gstmt n i = D.StatementNode $ D.NodeStatement i [ D.Attribute "label" $ D.Id n
                                                 , D.Attribute "fixedsize" "true"
                                                 , D.Attribute "width" "0.6"
                                                 ]
+
+edge :: D.NodeId -> D.NodeId -> D.Statement
 edge n1 n2 = D.StatementEdge $ D.EdgeStatement (D.ListTwo (D.EdgeNode n1) (D.EdgeNode n2) []) []
+
+nedge :: Text -> D.NodeId -> D.NodeId -> D.Statement
 nedge n n1 n2 =
   D.StatementEdge $ D.EdgeStatement (D.ListTwo (D.EdgeNode n1) (D.EdgeNode n2) [])
   [ D.Attribute "xlabel" $ D.Id ("   " <> n <> "   ")
@@ -64,6 +77,7 @@ sub n (D.NodeId i _) xs =
   D.StatementSubgraph $ D.Subgraph (Just i) $
     [D.StatementAttribute $ D.AttributeStatement D.Graph [D.Attribute "label" $ D.Id n]] ++ xs
 
+ppStmt :: Statement a -> IO (D.NodeId, [D.Statement])
 ppStmt (SExpr e _)  = do
   i <- freshId
   (j, expr) <- ppExpr e
@@ -73,13 +87,14 @@ ppStmt (SExpr e _)  = do
              ] ++ expr)
 ppStmt (Return (Just expr) _) = do
   i <- freshId
-  (j, expr) <- ppExpr expr
+  (j, expr') <- ppExpr expr
 
   return (i, [ nstmt "return" i
              , edge i j
-             ] ++ expr)
+             ] ++ expr')
 
 
+ppLit :: Lit -> IO (D.NodeId, [D.Statement])
 ppLit (IntLiteral n rep typ) = do
   i <- freshId
   j <- freshId
@@ -105,6 +120,7 @@ ppLit (CharLiteral n) = do
              , edge i j
              ])
 
+ppType :: Type -> IO (D.NodeId, [D.Statement])
 ppType (TyDef ty)    = do
   i <- freshId
   j <- freshId
@@ -113,9 +129,10 @@ ppType (TyDef ty)    = do
              , edge i j
              ])
 
-ppExpr (Literal lit _) = do
+ppExpr :: Expression a -> IO (D.NodeId, [D.Statement])
+ppExpr (Literal lit' _) = do
   i <- freshId
-  (j, lit) <- ppLit lit
+  (j, lit) <- ppLit lit'
 
   return (i, [ nstmt "literal" i
              , edge i j
@@ -140,7 +157,7 @@ ppExpr (MemberRef ModMem (Identifier m _) expr _) = do
              , edge i j
              ] ++ expr')
 
-
+ppArgs :: ([(Text, Type)], Bool) -> IO (D.NodeId, [D.Statement])
 ppArgs (xs, var) = do
   i <- freshId
   (links, decls) <- unzip <$> mapM ppArg xs
@@ -158,6 +175,7 @@ ppArgs (xs, var) = do
                , nedge "type" i k
                ] ++ typ)
 
+ppStructFields :: [(Text, Type)] -> IO (D.NodeId, [D.Statement])
 ppStructFields xs = do
   i <- freshId
   (links, decls) <- unzip <$> mapM ppField xs
@@ -175,16 +193,17 @@ ppStructFields xs = do
                , nedge "type" i k
                ] ++ typ)
 
+ppUnionCons :: [(Text, [(Text, Type)])] -> IO (D.NodeId, [D.Statement])
 ppUnionCons xs = do
   i <- freshId
   (links, decls) <- unzip <$> mapM ppUnionCon xs
 
   return (i, gstmt "cons" i : (edge i <$> links) ++ concat decls)
  where
-  ppUnionCon (n, xs) = do
+  ppUnionCon (n, xs') = do
     i <- freshId
     j <- freshId
-    (links, decls) <- unzip <$> mapM ppField xs
+    (links, decls) <- unzip <$> mapM ppField xs'
 
     return (i, [ gstmt "fields" i
                , stmt n j
@@ -201,18 +220,17 @@ ppUnionCons xs = do
                , nedge "type" i k
                ] ++ typ)
 
--- Union Text [(Text, [(Text, Type)])] a
--- Struct Text [(Text, Type)] a
+ppTL :: TopLevel a -> IO (D.NodeId, [D.Statement])
 ppTL (Union n cons _) = do
   i <- freshId
   j <- freshId
-  (k, cons) <- ppUnionCons cons
+  (k, cons') <- ppUnionCons cons
 
   return (i, [ nstmt "union" i
              , stmt n j
              , nedge "name" i j
              , nedge "cons" i k
-             ] ++ cons)
+             ] ++ cons')
 ppTL (Struct n fields _) = do
   i <- freshId
   j <- freshId
@@ -228,10 +246,8 @@ ppTL (Func name retTy args body _) = do
   j <- freshId
   (k, typ) <- ppType retTy
   (l, argg) <- ppArgs args
-  (links, body) <- unzip <$> mapM ppStmt body
+  (links, body') <- unzip <$> mapM ppStmt body
   m <- freshId
-
-  a <- freshId
 
   return (i, [ nstmt "function" i
              , stmt name j
@@ -240,4 +256,4 @@ ppTL (Func name retTy args body _) = do
              , nedge "args" i l
              , gstmt "body" m
              , edge i m
-             ] ++ typ ++ argg ++ (edge m <$> links) ++ concat body)
+             ] ++ typ ++ argg ++ (edge m <$> links) ++ concat body')

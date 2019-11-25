@@ -194,7 +194,7 @@ pAlias = do
   name <- identifier
   args <- optional $ parens pArgs
   _ <- equals
-  block <- (identifier <|> cIdentifier)
+  block <- identifier <|> cIdentifier
   return $ Alias lang (ty, name, fromMaybe ([], False) args) block pos
  where
   pArgs :: Parser ([Type], Bool)

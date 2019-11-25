@@ -13,7 +13,6 @@
 module Rewriters.C.FunctionAlias where
 
 import Language.C
-import Language.C.Syntax
 import Language.C.System.GCC
 
 import Data.Text (Text)
@@ -55,7 +54,7 @@ functionAliases :: FunctionAliases
 functionAliases = FunctionAliases { cFuncs = Map.empty, aliases = Map.empty }
 
 instance Extractor FunctionAliases [CExtDecl] where
-  extract fa xs = do
+  extract _ xs = do
     let headers = catMaybes $ collectImports <$> xs
     Right (CTranslUnit decls _) <- withSystemTempFile "resolver-function-alias.c" $ \fp hndl -> do
       T.hPutStrLn hndl $ T.unlines headers
@@ -65,4 +64,4 @@ instance Extractor FunctionAliases [CExtDecl] where
 
 collectImports :: TL -> Maybe Text
 collectImports (Import (Just C) text) = Just $ "#include <" <> text <> ".h>"
-collectImports x = Nothing
+collectImports _ = Nothing

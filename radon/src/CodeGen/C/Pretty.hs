@@ -56,7 +56,8 @@ mlistP pp xs = maybeP pp (if null xs then Nothing else Just xs)
 identP :: Ident -> Doc
 identP = text . identToString
 
-lineInfo ni = 
+lineInfo :: NodeInfo -> Doc
+lineInfo ni =
   let pos = posOfNode ni in
   if isSourcePos pos then text "#line " <> text (show $ posRow pos) <> text " \"" <> text (posFile pos) <> text "\""
                      else empty
@@ -89,14 +90,17 @@ prettyUsingInclude (CTranslUnit edecls _) =
   vcat (map (either includeHeader pretty) mappedDecls)
   where
     (headerFiles,mappedDecls) = foldr (addDecl . tagIncludedDecls) (Set.empty,[]) edecls
+    tagIncludedDecls :: (CNode b, Pos b) => b -> Either String b
     tagIncludedDecls edecl | maybe False isHeaderFile (fileOfNode edecl) = Left ((posFile . posOf) edecl)
                            | otherwise = Right edecl
+    addDecl :: Ord a => Either a b -> (Set.Set a, [Either a b]) -> (Set.Set a, [Either a b])
     addDecl decl@(Left headerRef) (headerSet, ds)
       | Set.member headerRef headerSet = (headerSet, ds)
       | otherwise = (Set.insert headerRef headerSet, decl : ds)
     addDecl decl (headerSet,ds) = (headerSet, decl : ds)
     includeHeader hFile = text "#include" <+> doubleQuotes (text hFile)
     isHeaderFile = (".h" `isSuffixOf`)
+    includeWarning :: Set.Set a -> Doc
     includeWarning hs | Set.null hs = empty
                       | otherwise = text "/* Warning: The #include directives in this file aren't necessarily correct. */"
 
@@ -133,8 +137,10 @@ instance Pretty CStat where
                     $+$ prettyBody stat
                     $$  maybeP prettyElse estat
           where
+            prettyBody :: Pretty (CStatement a) => CStatement a -> Doc
             prettyBody c@CCompound {} = prettyPrec (-1) c
             prettyBody nonCompound         = prettyPrec (-1) (CCompound [] [CBlockStmt nonCompound] undefined)
+            prettyElse :: (Pretty (CExpression a), Pretty (CStatement a)) => CStatement a -> Doc
             prettyElse (CIf else_if_expr else_if_stat else_stat _) =
               text "else if" <+> parens (pretty else_if_expr)
                 $+$ prettyBody else_if_stat
@@ -207,6 +213,7 @@ instance Pretty CDecl where
             where
             -- possible hint for AST improvement - (declr, initializer, expr, attrs)
             -- currently there are no sensible attributes for unnamed bitfields though
+            p :: (Pretty p1, Pretty p2) => (Maybe CDeclr, Maybe p2, Maybe p1) -> Doc
             p (declr, initializer, expr) =
                 maybeP (prettyDeclr False 0) declr <+>
                 maybeP ((text ":" <+>) . pretty) expr <+>
@@ -219,8 +226,10 @@ instance Pretty CDecl where
                             show (map pretty specs))
                            specs
                     else specs
+            isAttrAfterSUE :: (CDeclarationSpecifier a1, CDeclarationSpecifier a2) -> Bool
             isAttrAfterSUE (CTypeSpec ty,CTypeQual (CAttrQual _)) = isSUEDef ty
             isAttrAfterSUE _ = False
+            getAttrs :: Maybe (CDeclarator a) -> [CAttribute a]
             getAttrs Nothing = []
             getAttrs (Just (CDeclr _ _ _ cattrs _)) = cattrs
     pretty (CStaticAssert expr str _) =
@@ -309,6 +318,7 @@ instance Pretty CEnum where
         text "enum" <+> attrlistP cattrs <+> maybeP identP enum_ident <+> text "{",
         ii $ sep (punctuate comma (map p vals)),
         text "}"] where
+        p :: Pretty p => (Ident, Maybe p) -> Doc
         p (ident, expr) = identP ident <+> maybeP ((text "=" <+>) . pretty) expr
 
 --  Analyze a declarator and return a human-readable description
@@ -345,7 +355,7 @@ instance Pretty CEnum where
 --   prettyList :: (Pretty a) => [a] -> Doc
 --   prettyList = hsep . punctuate comma . map pretty
 instance Pretty CDeclr where
-    prettyPrec = prettyDeclr True 
+    prettyPrec = prettyDeclr True
 
 prettyDeclr :: Bool -> Int -> CDeclr -> Doc
 prettyDeclr show_attrs prec (CDeclr name derived_declrs asmname cattrs _) =
@@ -364,12 +374,14 @@ prettyDeclr show_attrs prec (CDeclr name derived_declrs asmname cattrs _) =
     ppDeclr _ (CFunDeclr params fun_attrs _ : declrs) =
         (if not (null fun_attrs) then parens (attrlistP fun_attrs <+> ppDeclr 5 declrs) else ppDeclr 6 declrs)
         <> parens (prettyParams params)
+    prettyParams :: Pretty p => Either [Ident] ([p], Bool) -> Doc
     prettyParams (Right (decls, isVariadic)) =
      sep (punctuate comma (map pretty decls))
      <> (if isVariadic then text "," <+> text "..." else empty)
     prettyParams (Left oldStyleIds) =
      hsep (punctuate comma (map identP oldStyleIds))
-    prettyAsmName 
+    prettyAsmName :: Pretty p => Maybe p -> Doc
+    prettyAsmName
         = maybe empty (\asm_name -> text "__asm__" <> parens (pretty asm_name))
 
 instance Pretty CArrSize where
@@ -382,6 +394,7 @@ instance Pretty CInit where
     pretty (CInitExpr expr _) = pretty expr
     pretty (CInitList initl _) =
         text "{" <+> hsep (punctuate comma (map p initl)) <+> text "}" where
+        p :: (Pretty p1, Pretty p2) => ([p2], p1) -> Doc
         p ([], initializer)     = pretty initializer
         p (desigs, initializer) = hsep (map pretty desigs) <+> text "=" <+> pretty initializer
 
@@ -440,7 +453,7 @@ instance Pretty CExpr where
     prettyPrec p (CIndex expr1 expr2 _) =
         parenPrec p 26 $ prettyPrec 26 expr1
                        <> text "[" <> pretty expr2 <> text "]"
-    prettyPrec p (CCall expr args ni) =
+    prettyPrec p (CCall expr args _) =
         (parenPrec p 30 $ prettyPrec 30 expr <> text "("
           <> (sep . punctuate comma . map pretty) args <> text ")")
     prettyPrec p (CMember expr ident deref _) =
@@ -450,6 +463,7 @@ instance Pretty CExpr where
     prettyPrec _p (CConst constant) = pretty constant
     prettyPrec _p (CCompoundLit decl initl _) =
         parens (pretty decl) <+> (braces . hsep . punctuate comma) (map p initl) where
+        p :: (Pretty p1, Pretty p2) => ([p2], p1) -> Doc
         p ([], initializer)           = pretty initializer
         p (mems, initializer) = hcat (punctuate (text ".") (map pretty mems)) <+> text "=" <+> pretty initializer
 
@@ -461,6 +475,7 @@ instance Pretty CExpr where
     prettyPrec _p (CGenericSelection expr assoc_list _) =
       text "_Generic" <> (parens.hsep.punctuate comma) (pretty expr : map pAssoc assoc_list)
       where
+        pAssoc :: (Pretty p1, Pretty p2) => (Maybe p1, p2) -> Doc
         pAssoc (mty, expr1) = maybe (text "default") pretty mty <> text ":" <+> pretty expr1
     prettyPrec _p (CBuiltinExpr builtin) = pretty builtin
 
