@@ -11,9 +11,6 @@
 -----------------------------------------------------------------------------
 module CodeGen.C.Statement where
 
-import Data.Text (Text)
-import Data.Functor ((<&>))
-
 import Language.C.Data.Name
 import Language.C.Data.Node (NodeInfo)
 import Language.C.Syntax.AST
@@ -37,7 +34,7 @@ evalStmt (Declare n t mv na) =
 evalStmt (Return e na) =
   CBlockStmt $ CReturn (evalExpr <$> e) $ toNI na
 evalStmt (While c b na) =
-  CBlockStmt $ CWhile (evalExpr c) (CCompound [] (map evalStmt b) $ toNI na) False $ toNI na
+  CBlockStmt $ CWhile (evalExpr c) (CCompound [] (fmap evalStmt b) $ toNI na) False $ toNI na
 evalStmt (SExpr e na) =
   CBlockStmt $ CExpr (Just $ evalExpr e) $ toNI na
 evalStmt (For (Declare n t mv na') c f b na) =
@@ -45,7 +42,7 @@ evalStmt (For (Declare n t mv na') c f b na) =
     CFor (Right $ declare t n (mv <&> evalExpr) $ toNI na')
          (Just $ evalExpr c)
          (Just $ evalExpr f)
-         (CCompound [] (map evalStmt b) $ toNI na) $ toNI na
+         (CCompound [] (fmap evalStmt b) $ toNI na) $ toNI na
 evalStmt x =
   error $ "unhandled " ++ show x
 

@@ -12,9 +12,7 @@
 -----------------------------------------------------------------------------
 module Parser.TopLevel where
 
-import Data.Text (Text)
 import Control.Applicative hiding (some, many)
-import Data.Maybe (fromMaybe)
 
 import Text.Megaparsec
 import Text.Megaparsec.Char (space)

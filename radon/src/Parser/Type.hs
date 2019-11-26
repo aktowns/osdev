@@ -12,8 +12,6 @@
 -----------------------------------------------------------------------------
 module Parser.Type where
 
-import Data.Functor ((<&>))
-
 import Text.Megaparsec
 
 import AST

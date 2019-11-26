@@ -12,7 +12,6 @@
 -----------------------------------------------------------------------------
 module Parser.Expression where
 
-import Data.Functor ((<&>))
 import Control.Applicative hiding (some, many)
 import Control.Monad.Combinators.Expr
 
@@ -101,7 +100,7 @@ pInteger = try pHex <|> try pOct <|> pInt
 
 
 pString :: Parser Expr
-pString = Literal . StrLiteral <$> stringLiteral' <*> getNA
+pString = Literal . StrLiteral <$> stringLiteral <*> getNA
 
 pChar :: Parser Expr
 pChar = Literal . CharLiteral <$> charLiteral <*> getNA

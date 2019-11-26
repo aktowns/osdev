@@ -13,7 +13,6 @@ module Parser.Common where
 
 import Control.Monad (void)
 
-import Data.Text (Text)
 import qualified Data.Text as T
 
 import Text.Megaparsec
@@ -276,11 +275,8 @@ octal = lexeme L.octal
 charLiteral :: Parser Char
 charLiteral = between (char '\'') (char '\'') L.charLiteral
 
-stringLiteral :: Parser String
-stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
-
-stringLiteral' :: Parser Text
-stringLiteral' = T.pack <$> stringLiteral
+stringLiteral :: Parser Text
+stringLiteral = T.pack <$> (char '\"' *> manyTill L.charLiteral (char '\"'))
 
 identifier :: Parser Text
 identifier =
@@ -314,7 +310,7 @@ bracesper = between lbraceper rbraceper
 getNA :: Parser NodeAnnotation
 getNA = do
   pos <- getSourcePos
-  return $ NodeAnnotation { source = NodeSource (sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
+  return $ NodeAnnotation { source = NodeSource (T.pack $ sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
                           , metadata = NodeMetadata { codegenIgnore = False, rewriterIgnore = False }
                           }
 

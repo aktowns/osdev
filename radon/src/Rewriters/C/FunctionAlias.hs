@@ -15,10 +15,8 @@ module Rewriters.C.FunctionAlias where
 import Language.C
 import Language.C.System.GCC
 
-import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.Maybe (catMaybes)
 import Data.Map (Map)
 import qualified Data.Map as Map
 

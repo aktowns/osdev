@@ -14,9 +14,7 @@ module AST where
 
 import Language.C.Syntax.AST (Annotated(..))
 
-import Data.Text (Text)
-
-data NodeSource = NodeSource { filename :: String
+data NodeSource = NodeSource { filename :: Text
                              , line     :: Int
                              , column   :: Int
                              } deriving (Show)
@@ -152,35 +150,43 @@ instance Annotated TopLevel where
   amap f (Func a1 a2 a3 a4 a5) = Func a1 a2 a3 a4 $ f a5
   amap f (Decl a1 a2 a3 a4)    = Decl a1 a2 a3 $ f a4
   amap f (Module a1 a2 a3)     = Module a1 a2 $ f a3
+  amap f (Union a1 a2 a3)      = Union a1 a2 $ f a3
+  amap f (Struct a1 a2 a3)     = Struct a1 a2 $ f a3
+  amap f (TypeDef a1 a2 a3)    = TypeDef a1 a2 $ f a3
+  amap f (Alias a1 a2 a3 a4)   = Alias a1 a2 a3 $ f a4
+  amap f (Import a1 a2 a3)     = Import a1 a2 $ f a3
 
 instance Functor Expression where
-  fmap f (Literal a1 a2)      = Literal a1 (f a2)
-  fmap f (Binary a1 a2 a3 a4) = Binary a1 (fmap f a2) (fmap f a3) (f a4)
-  fmap f (FunCall a1 a2 a3)   = FunCall a1 (fmap f <$> a2) (f a3)
-  fmap f (Assign a1 a2 a3)    = Assign (fmap f a1) (fmap f a2) (f a3)
-  fmap f (ArraySub a1 a2 a3)  = ArraySub a1 (fmap f a2) (f a3)
-  fmap f (Unary a1 a2 a3 a4)  = Unary a1 a2 (fmap f a3) (f a4)
-  fmap f (Identifier a1 a2)   = Identifier a1 (f a2)
-  fmap f (Cast a1 a2 a3)      = Cast a1 (fmap f a2) (f a3)
+  fmap f (Literal a1 a2)         = Literal a1 (f a2)
+  fmap f (Binary a1 a2 a3 a4)    = Binary a1 (fmap f a2) (fmap f a3) (f a4)
+  fmap f (FunCall a1 a2 a3)      = FunCall a1 (fmap f <$> a2) (f a3)
+  fmap f (Assign a1 a2 a3)       = Assign (fmap f a1) (fmap f a2) (f a3)
+  fmap f (ArraySub a1 a2 a3)     = ArraySub a1 (fmap f a2) (f a3)
+  fmap f (Unary a1 a2 a3 a4)     = Unary a1 a2 (fmap f a3) (f a4)
+  fmap f (Identifier a1 a2)      = Identifier a1 (f a2)
+  fmap f (Cast a1 a2 a3)         = Cast a1 (fmap f a2) (f a3)
+  fmap f (MemberRef a1 a2 a3 a4) = MemberRef a1 (fmap f a2) (fmap f a3) (f a4)
 
 instance Annotated Expression where
-  annotation (Literal _ n)    = n
-  annotation (Binary _ _ _ n) = n
-  annotation (FunCall _ _ n)  = n
-  annotation (Assign _ _ n)   = n
-  annotation (ArraySub _ _ n) = n
-  annotation (Unary _ _ _ n)  = n
-  annotation (Identifier _ n) = n
-  annotation (Cast _ _ n)     = n
+  annotation (Literal _ n)       = n
+  annotation (Binary _ _ _ n)    = n
+  annotation (FunCall _ _ n)     = n
+  annotation (Assign _ _ n)      = n
+  annotation (ArraySub _ _ n)    = n
+  annotation (Unary _ _ _ n)     = n
+  annotation (Identifier _ n)    = n
+  annotation (Cast _ _ n)        = n
+  annotation (MemberRef _ _ _ n) = n
 
-  amap f (Literal a1 a2)      = Literal a1 $ f a2
-  amap f (Binary a1 a2 a3 a4) = Binary a1 a2 a3 $ f a4
-  amap f (FunCall a1 a2 a3)   = FunCall a1 a2 $ f a3
-  amap f (Assign a1 a2 a3)    = Assign a1 a2 $ f a3
-  amap f (ArraySub a1 a2 a3)  = ArraySub a1 a2 $ f a3
-  amap f (Unary a1 a2 a3 a4)  = Unary a1 a2 a3 $ f a4
-  amap f (Identifier a1 a2)   = Identifier a1 $ f a2
-  amap f (Cast a1 a2 a3)      = Cast a1 a2 $ f a3
+  amap f (Literal a1 a2)         = Literal a1 $ f a2
+  amap f (Binary a1 a2 a3 a4)    = Binary a1 a2 a3 $ f a4
+  amap f (FunCall a1 a2 a3)      = FunCall a1 a2 $ f a3
+  amap f (Assign a1 a2 a3)       = Assign a1 a2 $ f a3
+  amap f (ArraySub a1 a2 a3)     = ArraySub a1 a2 $ f a3
+  amap f (Unary a1 a2 a3 a4)     = Unary a1 a2 a3 $ f a4
+  amap f (Identifier a1 a2)      = Identifier a1 $ f a2
+  amap f (Cast a1 a2 a3)         = Cast a1 a2 $ f a3
+  amap f (MemberRef a1 a2 a3 a4) = MemberRef a1 a2 a3 $ f a4
 
 instance Functor Statement where
   fmap f (Declare a1 a2 a3 a4) = Declare a1 a2 ((fmap . fmap) f a3) (f a4)

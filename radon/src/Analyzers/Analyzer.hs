@@ -11,8 +11,6 @@
 -----------------------------------------------------------------------------
 module Analyzers.Analyzer where
 
-import Data.Text (Text)
-
 import AST
 
 data AnalyzerResult = Ok | Failed Text deriving (Show)

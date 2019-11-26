@@ -17,7 +17,6 @@ import Language.C.Data.Name
 import Language.C.Data.Ident
 import Language.C.Data.Position
 
-import Data.Text (Text)
 import qualified Data.Text as T
 
 import AST
@@ -30,4 +29,4 @@ mkIdent' x = mkIdent nopos (T.unpack x)
 
 toNI :: NodeAnnotation -> NodeInfo
 toNI NodeAnnotation{..} = let NodeSource{..} = source in 
-    mkNodeInfoOnlyPos (position 0 filename line column Nothing)
+    mkNodeInfoOnlyPos (position 0 (T.unpack filename) line column Nothing)

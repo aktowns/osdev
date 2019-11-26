@@ -11,9 +11,7 @@
 -----------------------------------------------------------------------------
 module CodeGen.C.TopLevel where
 
-import Data.Functor ((<&>))
 import Data.String (IsString)
-import Data.Text (Text)
 import qualified Data.Text as T
 
 import Language.C.Data.Name
@@ -31,14 +29,14 @@ initExpr :: Maybe Expr -> Maybe CInit
 initExpr v = v <&> \e -> CInitExpr (evalExpr e) un
 
 evalArgs :: [(Text, Type)] -> [CDecl]
-evalArgs = map eval
+evalArgs = fmap eval
  where
    eval (n, t) = let (t', d) = evalType t in
      CDecl t' [(Just (CDeclr (Just (mkIdent' n (Name 0))) d Nothing [] un), Nothing, Nothing)] un
 
 enum :: Text -> [(Text, Maybe Integer)] -> CEnum
 enum name xs =
-  CEnum (Just $ mkIdent' name (Name 0)) (Just $ map splat xs) [] un
+  CEnum (Just $ mkIdent' name (Name 0)) (Just $ fmap splat xs) [] un
  where
    splat (n, Just v) = (mkIdent' (name <> "$" <> n) (Name 1), Just (CConst $ CIntConst (cInteger v) un))
    splat (n, Nothing) = (mkIdent' (name <> "$" <> n) (Name 1), Nothing)
@@ -66,7 +64,7 @@ evalTopLevel pfx (Enum n v na) =
       CStorageSpec (CTypedef un),CTypeSpec (CEnumType (enum (prefix pfx n) v) un)
     ] [(Just (CDeclr (Just (mkIdent' n (Name 0))) [] Nothing [] un), Nothing, Nothing)] $ toNI na]
 evalTopLevel pfx (Func n t a b na) =
-  [CFDefExt $ func (prefix pfx n) t a (map evalStmt b) $ toNI na]
+  [CFDefExt $ func (prefix pfx n) t a (fmap evalStmt b) $ toNI na]
 evalTopLevel pfx (Decl n t me na) =
   [CDeclExt $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), initExpr me, Nothing)] $ toNI na]
  where
@@ -87,7 +85,7 @@ prependC :: CTranslUnit -> [CExtDecl] -> CTranslUnit
 prependC (CTranslUnit decs na) xs = CTranslUnit (xs ++ decs) na
 
 evalAliasArgs :: [Type] -> [CDecl]
-evalAliasArgs = map eval
+evalAliasArgs = fmap eval
  where
    eval t = let (t', d) = evalType t in
      CDecl t' [(Just (CDeclr Nothing d Nothing [] un), Nothing, Nothing)] un
@@ -101,7 +99,7 @@ alias retTy name (args, vararg) newName na = CDecl retTyp [ (Just (CDeclr (Just 
   args' = [CFunDeclr (Right (evalAliasArgs args, vararg)) [] un]
 
 struct :: Text -> [(Text, Type)] -> NodeAnnotation -> Bool -> CDeclaration NodeInfo
-struct n f na td = CDecl (tydef ++ [ CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ map field f) [] un) un)
+struct n f na td = CDecl (tydef ++ [ CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ fmap field f) [] un) un)
                          ]) [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
  where
   tydef = if td then [CStorageSpec (CTypedef un)] else []
@@ -112,7 +110,7 @@ struct n f na td = CDecl (tydef ++ [ CTypeSpec (CSUType (CStruct CStructTag Noth
 
 union :: Text -> [(Text, [(Text, Type)])] -> NodeAnnotation -> CDeclaration NodeInfo
 union n c na = CDecl [ CStorageSpec (CTypedef un)
-                     , CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ tag : (map cons c)) [] un) un)
+                     , CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ tag : (fmap cons c)) [] un) un)
                      ] [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
   where
     cons (n', fields) = struct n' fields na False
