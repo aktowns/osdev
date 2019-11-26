@@ -26,4 +26,4 @@ parseText name txt =
 parseFile :: FilePath -> IO [TL]
 parseFile fp = do
   out <- T.readFile fp
-  return $ parseText (T.pack fp) out
+  pure $ parseText (T.pack fp) out

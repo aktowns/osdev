@@ -8,6 +8,7 @@ module Prelude ( module BasePrelude
 import BasePrelude hiding ( String            -- use text
                           , head, tail, read  -- use total alts
                           , map               -- use fmap
+                          , return            -- use pure
                           )
 
 import Data.Functor((<&>)) -- Y U NOT STANDARD ANYWAY?

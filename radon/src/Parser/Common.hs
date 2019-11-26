@@ -310,7 +310,7 @@ bracesper = between lbraceper rbraceper
 getNA :: Parser NodeAnnotation
 getNA = do
   pos <- getSourcePos
-  return $ NodeAnnotation { source = NodeSource (T.pack $ sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
-                          , metadata = NodeMetadata { codegenIgnore = False, rewriterIgnore = False }
-                          }
+  pure $ NodeAnnotation { source = NodeSource (T.pack $ sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
+                        , metadata = NodeMetadata { codegenIgnore = False, rewriterIgnore = False }
+                        }
 

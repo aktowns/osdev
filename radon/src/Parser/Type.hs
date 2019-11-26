@@ -27,7 +27,7 @@ pWrapType :: Parser Type
 pWrapType = do
   _ <- symbol "Ptr"
   inner <- angles pType
-  return $ TyPtr inner
+  pure $ TyPtr inner
 
 pType :: Parser Type
 pType = pWrapType <|> pUnaryType <|> (TyEmbedded <$> pTypeEmbed)

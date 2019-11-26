@@ -27,4 +27,3 @@ evalType (TyStatic ty) = first (\x -> CStorageSpec (CStatic un) : x) $ evalType 
 evalType (TyConst ty)  = first (\x -> CTypeQual (CConstQual un) : x) $ evalType ty
 evalType (TyEmbedded (EmbeddedType n C)) =
   ([CTypeSpec (CTypeDef (mkIdent' n (Name 0)) un)], [])
-evalType x             = error $ "unhandled " ++ show x

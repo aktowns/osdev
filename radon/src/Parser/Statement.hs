@@ -39,7 +39,7 @@ pDeclare = do
   _ <- colon
   typ <- pType
   value <- optional (equals *> pExpr)
-  return (Declare name (foldr ($) typ quals) value pos) <?> "val"
+  pure (Declare name (foldr ($) typ quals) value pos) <?> "val"
 
 -- | Parses a while statement
 --
@@ -57,14 +57,14 @@ pWhile = pWhileSmall <|> pWhileFull <?> "while"
   pWhileSmall = do
     (pos, cond) <- pWhileStart
     body <- pStmt
-    return $ While cond [body] pos
+    pure $ While cond [body] pos
 
   pWhileFull :: Parser Stmt
   pWhileFull = L.indentBlock scn preamb
    where
     preamb = do
       (pos, cond) <- pWhileStart
-      return $ L.IndentSome Nothing (\x -> return $ While cond x pos) pStmt
+      pure $ L.IndentSome Nothing (\x -> pure $ While cond x pos) pStmt
 
   pWhileStart :: Parser (NodeAnnotation, Expr)
   pWhileStart = do
@@ -72,18 +72,18 @@ pWhile = pWhileSmall <|> pWhileFull <?> "while"
     _ <- kWhile
     cond <- parens pExpr
     _ <- colon
-    return (pos, cond)
+    pure (pos, cond)
 
--- if (x): 1
+-- if x: 1
 --
--- if (x): 1
--- elif (x): 2
+-- if x: 1
+-- elif x: 2
 -- else: 3
 --
 -- pIf :: Parser Stmt
 -- pIf = do
 --   _ <- kIf
---   expr <- parens pExpr
+--   expr <- pExpr
 --   _ <- colon
 
 -- | parses a for statement
@@ -92,8 +92,8 @@ pWhile = pWhileSmall <|> pWhileFull <?> "while"
 -- or
 --
 -- > for (val x: Int = 0; x < 10; x++):
--- > statement1
--- > statement2
+-- >  statement1
+-- >  statement2
 -- > ..
 pFor :: Parser Stmt
 pFor = (pForSmall <|> pForFull) <?> "for"
@@ -102,14 +102,14 @@ pFor = (pForSmall <|> pForFull) <?> "for"
   pForSmall = do
     (pos, initial, cond, fin) <- pForPreamb
     body <- pStmt
-    return $ For initial cond fin [body] pos
+    pure $ For initial cond fin [body] pos
 
   pForFull :: Parser Stmt
   pForFull = L.indentBlock scn preamb
    where
     preamb = do
       (pos, initial, cond, fin) <- pForPreamb
-      return $ L.IndentSome Nothing (\x -> return $ For initial cond fin x pos) pStmt
+      pure $ L.IndentSome Nothing (\x -> pure $ For initial cond fin x pos) pStmt
 
   pForPreamb :: Parser (NodeAnnotation, Stmt, Expr, Expr)
   pForPreamb = do
@@ -123,7 +123,7 @@ pFor = (pForSmall <|> pForFull) <?> "for"
     fin  <- pExpr
     _ <- rparen
     _ <- colon
-    return (pos, initial, cond, fin)
+    pure (pos, initial, cond, fin)
 
 -- | Parses expressions as a statement throwing away the side effect
 pStmtExpr :: Parser Stmt

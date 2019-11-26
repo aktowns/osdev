@@ -52,13 +52,13 @@ table = [ [ binary  dot          $ MemberRef FieldMem
         ]
  where
   binary :: Parser b -> (a -> a -> NodeAnnotation -> a) -> Operator Parser a
-  binary  name f = InfixL $ (getNA <&> niflip3 f) <* name
+  binary name f = InfixL $ (getNA <&> niflip3 f) <* name
    where
     niflip3 :: (a -> b -> c -> d) -> c -> a -> b -> d
     niflip3 f' e3 e1 e2 = f' e1 e2 e3
 
   prefix :: Parser b -> (a -> NodeAnnotation -> a) -> Operator Parser a
-  prefix  name f = Prefix $ (getNA <&> flip f) <* name
+  prefix name f = Prefix $ (getNA <&> flip f) <* name
 
   sing :: Parser a -> Parser a
   sing n = try (n <* notFollowedBy n)
@@ -81,7 +81,7 @@ pInteger = try pHex <|> try pOct <|> pInt
     _ <- char '0' >> char 'x'
     i <- hexadecimal
     t <- intTy
-    return $ Literal (IntLiteral i Hex t) p
+    pure $ Literal (IntLiteral i Hex t) p
 
   pOct :: Parser Expr
   pOct = do
@@ -89,15 +89,14 @@ pInteger = try pHex <|> try pOct <|> pInt
     _ <- char '0'
     i <- octal
     t <- intTy
-    return $ Literal (IntLiteral i Oct t) p
+    pure $ Literal (IntLiteral i Oct t) p
 
   pInt :: Parser Expr
   pInt = do
     p <- getNA
     i <- integer
     t <- intTy
-    return $ Literal (IntLiteral i Dec t) p
-
+    pure $ Literal (IntLiteral i Dec t) p
 
 pString :: Parser Expr
 pString = Literal . StrLiteral <$> stringLiteral <*> getNA
@@ -110,7 +109,7 @@ pFuncCall = do
   pos <- getNA
   name <- identifier
   args <- parens $ pExpr `sepBy` comma
-  return $ FunCall name args pos
+  pure $ FunCall name args pos
 
 pTerm :: Parser Expr
 pTerm = pString
@@ -128,7 +127,7 @@ pCast = do
   pos <- getNA
   typ <- parens pType
   expr <- pExpr
-  return $ Cast typ expr pos
+  pure $ Cast typ expr pos
 
 pIdentifier :: Parser Expr
 pIdentifier = Identifier <$> identifier <*> getNA
@@ -141,7 +140,7 @@ pArraySub = do
   pos <- getNA
   ident <- identifier <|> cIdentifier
   subsc <- bracks pExpr
-  return $ ArraySub ident subsc pos
+  pure $ ArraySub ident subsc pos
 
 pAssign :: Parser Expr
 pAssign = do
@@ -149,11 +148,11 @@ pAssign = do
   left <- try pArraySub <|> pIdentifier <|> pCIdentifier
   _ <- equals
   right <- pExpr
-  return $ Assign left right pos
+  pure $ Assign left right pos
 
 pExpr :: Parser Expr
 pExpr = makeExprParser pTerm table >>= \case
-  x@(MemberRef _ _ (Identifier _ _) _) -> return x
-  x@(MemberRef _ _ FunCall {} _)       -> return x
+  x@(MemberRef _ _ (Identifier _ _) _) -> pure x
+  x@(MemberRef _ _ FunCall {} _)       -> pure x
   MemberRef {}                         -> customFailure $ ParserError "unexpected expression in member field access"
-  x -> return x
+  x -> pure x

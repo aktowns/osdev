@@ -58,7 +58,7 @@ instance Extractor FunctionAliases [CExtDecl] where
       T.hPutStrLn hndl $ T.unlines headers
       hClose hndl
       parseCFile (newGCC "gcc") Nothing [] fp
-    return decls
+    pure decls
 
 collectImports :: TL -> Maybe Text
 collectImports (Import (Just C) text _) = Just $ "#include <" <> text <> ".h>"

@@ -42,7 +42,7 @@ pEnum = L.indentBlock scn preamb
     _ <- kEnum
     name <- cIdentifier
     _ <- equals
-    return $ L.IndentSome Nothing (\x -> return $ Enum name x pos) pEnumBody
+    pure $ L.IndentSome Nothing (\x -> pure $ Enum name x pos) pEnumBody
 
   pEnumBody :: Parser (Text, Maybe Integer)
   pEnumBody = (,) <$> cIdentifier <*> optional (equals *> integer)
@@ -61,7 +61,7 @@ pStruct = L.indentBlock scn preamb
     _ <- kStruct
     name <- cIdentifier
     _ <- equals
-    return $ L.IndentSome Nothing (\x -> return $ Struct name x pos) pStructBody
+    pure $ L.IndentSome Nothing (\x -> pure $ Struct name x pos) pStructBody
 
   pStructBody :: Parser (Text, Type)
   pStructBody = (,) <$> identifier <*> (colon *> pType)
@@ -81,7 +81,7 @@ pUnion = L.indentBlock scn preamb
     _ <- kUnion
     name <- cIdentifier
     _ <- equals
-    return $ L.IndentSome Nothing (\x -> return $ Union name x pos) pUnionBody
+    pure $ L.IndentSome Nothing (\x -> pure $ Union name x pos) pUnionBody
 
   pUnionBody :: Parser (Text, [(Text, Type)])
   pUnionBody = (,) <$> cIdentifier <*> (fromMaybe [] <$> optional (parens pArgs))
@@ -110,14 +110,14 @@ pFunc = try pFuncSmall <|> pFuncFull
   pFuncSmall = do
     (pos, quals, name, args, typ) <- pFuncPreamb
     body <- pStmt
-    return $ Func name (foldr ($) typ quals) args [body] pos
+    pure $ Func name (foldr ($) typ quals) args [body] pos
 
   pFuncFull :: Parser TL
   pFuncFull = L.indentBlock scn preamb
    where
     preamb = do
       (pos, quals, name, args, typ) <- pFuncPreamb
-      return $ L.IndentSome Nothing (\x -> return $ Func name (foldr ($) typ quals) args x pos) pStmt
+      pure $ L.IndentSome Nothing (\x -> pure $ Func name (foldr ($) typ quals) args x pos) pStmt
 
   pFuncPreamb :: Parser (NodeAnnotation, [Type -> Type], Text, ([(Text, Type)], Bool), Type)
   pFuncPreamb = do
@@ -128,7 +128,7 @@ pFunc = try pFuncSmall <|> pFuncFull
       _ <- colon
       typ <- pType
       _ <- equals
-      return (pos, quals, name, fromMaybe ([], False) args, typ)
+      pure (pos, quals, name, fromMaybe ([], False) args, typ)
    where
     pArg :: Parser (Text, Type)
     pArg = (,) <$> identifier <* colon <*> pType
@@ -152,7 +152,7 @@ pDecl = do
   name <- kVal *> cIdentifier <* colon
   typ <- pType
   value <- optional $ equals *> pExpr
-  return (Decl name (foldr ($) typ quals) value pos) <?> "val"
+  pure (Decl name (foldr ($) typ quals) value pos) <?> "val"
 
 -- | parses top level module declarations
 --
@@ -165,7 +165,7 @@ pModule = L.nonIndented scn (L.indentBlock scn preamb)
   preamb = do
     pos <- getNA
     name <- kModule *> cIdentifier <* equals
-    return $ L.IndentSome Nothing (\x -> return $ Module name x pos) pTopLevelEntry
+    pure $ L.IndentSome Nothing (\x -> pure $ Module name x pos) pTopLevelEntry
 
 -- | parses a type definition
 --
@@ -181,7 +181,7 @@ pTypeDef = do
   ty <- cIdentifier
   _ <- equals
   ty2 <- pType
-  return $ TypeDef ty ty2 pos
+  pure $ TypeDef ty ty2 pos
 
 pAlias :: Parser TL
 pAlias = do
@@ -193,7 +193,7 @@ pAlias = do
   args <- optional $ parens pArgs
   _ <- equals
   block <- identifier <|> cIdentifier
-  return $ Alias lang (ty, name, fromMaybe ([], False) args) block pos
+  pure $ Alias lang (ty, name, fromMaybe ([], False) args) block pos
  where
   pArgs :: Parser ([Type], Bool)
   pArgs = try varArgs <|> justArgs
@@ -207,7 +207,7 @@ pImport = do
   _ <- kImport
   lang <- optional language
   file <- identifier <|> cIdentifier
-  return $ Import lang file pos
+  pure $ Import lang file pos
 
 pTopLevelEntry :: Parser TL
 pTopLevelEntry = try pEnum

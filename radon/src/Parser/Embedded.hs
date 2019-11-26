@@ -24,7 +24,7 @@ embeddedBlock :: Parser (Text, Language)
 embeddedBlock = do
   lang <- bracks language
   body <- T.pack <$> (lbraceper *> manyTill asciiChar rbraceper)
-  return (body, lang)
+  pure (body, lang)
 
 pExprEmbed :: Parser (Embedded 'EExpr)
 pExprEmbed = uncurry EmbeddedExpr <$> embeddedBlock
