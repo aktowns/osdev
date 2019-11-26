@@ -114,10 +114,12 @@ union n c na =
           , CTypeSpec (CEnumType (enum (prefix (Just n) "tag") ucons) un) 
           ] [(Just (CDeclr (Just (mkIdent' (prefix (Just n) "tag") (Name 0))) [] Nothing [] un), Nothing, Nothing)] $ toNI na
   , CDecl [ CStorageSpec (CTypedef un)
-          , CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ tag : (fmap cons c)) [] un) un)
+          , CTypeSpec (CSUType (CStruct CStructTag Nothing (Just [tag, structunion $ fmap cons c]) [] un) un)
           ] [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
   ]
   where
+    structunion xs = (CDecl [CTypeSpec (CSUType (CStruct CUnionTag Nothing (Just xs) [] un) un)] [
+      (Just (CDeclr (Just $ mkIdent' "_$value" (Name 0)) [] Nothing [] un), Nothing, Nothing)] un)
     ucons :: [(Text, Maybe Integer)]
     ucons = (\x -> (fst x, Nothing)) <$> c
     cons (n', fields) = struct n' fields na False
