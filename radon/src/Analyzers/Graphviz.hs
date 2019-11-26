@@ -85,7 +85,7 @@ nedge n n1 n2 =
 sub :: Text -> D.NodeId -> [D.Statement] -> D.Statement
 sub n (D.NodeId i _) xs =
   D.StatementSubgraph $ D.Subgraph (Just i) $
-    [D.StatementAttribute $ D.AttributeStatement D.Graph [D.Attribute "label" $ D.Id n]] ++ xs
+    D.StatementAttribute (D.AttributeStatement D.Graph [D.Attribute "label" $ D.Id n]) : xs
 
 ppStmt :: Statement a -> IO (D.NodeId, [D.Statement])
 ppStmt (SExpr e _)  = do
@@ -102,7 +102,42 @@ ppStmt (Return (Just expr) _) = do
   return (i, [ nstmt "return" i
              , edge i j
              ] ++ expr')
+ppStmt (Return Nothing _) = do
+  i <- freshId
 
+  return (i, [ nstmt "return" i ])
+ppStmt (Declare n t Nothing _) = do
+  i <- freshId
+  j <- freshId
+  (k, ty) <- ppType t
+
+  return (i, [ nstmt "declare" i
+             , stmt n j
+             , nedge "identifier" i j
+             , nedge "type" i k
+             ] ++ ty)
+ppStmt (Declare n t (Just e) _) = do
+  i <- freshId
+  j <- freshId
+  (k, ty) <- ppType t
+  (l, ex) <- ppExpr e
+
+  return (i, [ nstmt "declare" i
+             , stmt n j
+             , nedge "identifier" i j
+             , nedge "type" i k
+             , nedge "expr" i l
+             ] ++ ty ++ ex)
+ppStmt (While e s _) = do
+  i <- freshId
+  (j, ex) <- ppExpr e
+  k <- freshId
+  (links, body) <- unzip <$> mapM ppStmt s
+
+  return (i, [ nstmt "while" i
+             , nedge "expr" i j
+             , gstmt "stmts" k
+             ] ++ ex ++ (edge k <$> links) ++ concat body)
 
 ppLit :: Lit -> IO (D.NodeId, [D.Statement])
 ppLit (IntLiteral n rep typ) = do
@@ -142,6 +177,30 @@ ppType (TyDef ty)    = do
              , stmt ty j
              , edge i j
              ])
+ppType (TyPtr ty) = do
+  i <- freshId
+  (j, ty') <- ppType ty
+
+  return (i, [ nstmt "TyPtr" i
+             , edge i j ] ++ ty')
+ppType (TyStatic ty) = do
+  i <- freshId
+  (j, ty') <- ppType ty
+
+  return (i, [ nstmt "TyStatic" i
+             , edge i j ] ++ ty')
+ppType (TyInline ty) = do
+  i <- freshId
+  (j, ty') <- ppType ty
+
+  return (i, [ nstmt "TyInline" i
+             , edge i j ] ++ ty')
+ppType (TyConst ty) = do
+  i <- freshId
+  (j, ty') <- ppType ty
+
+  return (i, [ nstmt "TyConst" i
+             , edge i j ] ++ ty')
 
 ppExpr :: Expression a -> IO (D.NodeId, [D.Statement])
 ppExpr (Literal lit' _) = do
@@ -271,7 +330,7 @@ ppTL (Func name retTy args body _) = do
              , gstmt "body" m
              , edge i m
              ] ++ typ ++ argg ++ (edge m <$> links) ++ concat body')
-ppTL (Module name body _) = do 
+ppTL (Module name body _) = do
   i <- freshId
   j <- freshId
   (links, body') <- unzip <$> mapM ppTL body

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.C.Pretty
@@ -422,8 +422,8 @@ instance Pretty CExpr where
         parenPrec p 26 $ prettyPrec 26 expr1
                        <> text "[" <> pretty expr2 <> text "]"
     prettyPrec p (CCall expr args _) =
-        (parenPrec p 30 $ prettyPrec 30 expr <> text "("
-          <> (sep . punctuate comma . fmap pretty) args <> text ")")
+        parenPrec p 30 $ prettyPrec 30 expr <> text "("
+          <> (sep . punctuate comma . fmap pretty) args <> text ")"
     prettyPrec p (CMember expr ident deref _) =
         parenPrec p 26 $ prettyPrec 26 expr
                        <> text (if deref then "->" else ".") <> identP ident

@@ -26,8 +26,6 @@ data NodeMetadata = NodeMetadata { codegenIgnore  :: Bool
 data NodeAnnotation = NodeAnnotation { source :: NodeSource, metadata :: NodeMetadata } deriving (Show)
 
 data Type = TyVoid
-          | TyChar
-          | TyString
           | TyPtr Type
           | TyDef Text
           | TyStatic Type
@@ -105,7 +103,7 @@ data Statement a = Declare Text Type (Maybe (Expression a)) a
                  | Return (Maybe (Expression a)) a
                  | While (Expression a) [Statement a] a
                  | For (Statement a) (Expression a) (Expression a) [Statement a] a
-                 | If (Expression a) [Statement a] a
+                 | If (Expression a) [Statement a] [(Expression a, [Statement a])] (Maybe [Statement a]) a
                  | SExpr (Expression a) a
                  deriving (Show, Eq, Ord)
 
@@ -192,8 +190,12 @@ instance Functor Statement where
   fmap f (Declare a1 a2 a3 a4) = Declare a1 a2 ((fmap . fmap) f a3) (f a4)
   fmap f (Return a1 a2)        = Return ((fmap . fmap) f a1) (f a2)
   fmap f (While a1 a2 a3)      = While (fmap f a1) ((fmap . fmap) f a2) (f a3)
-  fmap f (For a1 a2 a3 a4 a5)  = For (fmap f a1) (fmap f a2) (fmap f a3) ((fmap . fmap) f a4) (f a5)
+  fmap f (For a1 a2 a3 a4 a5)  = For (fmap f a1) (fmap f a2) (fmap f a3)
+                                     ((fmap . fmap) f a4) (f a5)
   fmap f (SExpr a1 a2)         = SExpr (fmap f a1) (f a2)
+  fmap f (If a1 a2 a3 a4 a5)   = If (fmap f a1) ((fmap . fmap) f a2)
+                                    (bimap (fmap f) ((fmap . fmap) f) <$> a3)
+                                    ((fmap . fmap . fmap) f a4) (f a5)
 
 instance Annotated Statement where
   annotation (Declare _ _ _ n) = n
@@ -201,9 +203,11 @@ instance Annotated Statement where
   annotation (While _ _ n)     = n
   annotation (For _ _ _ _ n)   = n
   annotation (SExpr _ n)       = n
+  annotation (If _ _ _ _ n)    = n
 
   amap f (Declare a1 a2 a3 a4) = Declare a1 a2 a3 $ f a4
   amap f (Return a1 a2)        = Return a1 $ f a2
   amap f (While a1 a2 a3)      = While a1 a2 $ f a3
   amap f (For a1 a2 a3 a4 a5)  = For a1 a2 a3 a4 $ f a5
   amap f (SExpr a1 a2)         = SExpr a1 $ f a2
+  amap f (If a1 a2 a3 a4 a5)   = If a1 a2 a3 a4 $ f a5

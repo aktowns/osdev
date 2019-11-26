@@ -55,10 +55,7 @@ pWhile = pWhileSmall <|> pWhileFull <?> "while"
  where
   pWhileSmall :: Parser Stmt
   pWhileSmall = do
-    pos <- getNA
-    _ <- kWhile
-    cond <- parens pExpr
-    _ <- colon
+    (pos, cond) <- pWhileStart
     body <- pStmt
     return $ While cond [body] pos
 
@@ -66,11 +63,16 @@ pWhile = pWhileSmall <|> pWhileFull <?> "while"
   pWhileFull = L.indentBlock scn preamb
    where
     preamb = do
-      pos <- getNA
-      _ <- kWhile
-      cond <- parens pExpr
-      _ <- colon
+      (pos, cond) <- pWhileStart
       return $ L.IndentSome Nothing (\x -> return $ While cond x pos) pStmt
+
+  pWhileStart :: Parser (NodeAnnotation, Expr)
+  pWhileStart = do
+    pos <- getNA
+    _ <- kWhile
+    cond <- parens pExpr
+    _ <- colon
+    return (pos, cond)
 
 -- if (x): 1
 --

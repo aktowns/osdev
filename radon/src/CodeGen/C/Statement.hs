@@ -21,7 +21,7 @@ import CodeGen.C.Expression
 import CodeGen.C.Type
 
 declare :: Type -> Text -> Maybe CExpr -> NodeInfo -> CDecl
-declare t n v ni = CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)] ni
+declare t n v = CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v, Nothing)]
  where
   name = mkIdent' n (Name 0)
   (typ, decs)  = evalType t

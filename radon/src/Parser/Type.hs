@@ -21,7 +21,6 @@ import Parser.Embedded
 pUnaryType :: Parser Type
 pUnaryType = cIdentifier <&> \case
   "Void"   -> TyVoid
-  "Char"   -> TyChar
   n        -> TyDef n
 
 pWrapType :: Parser Type
