@@ -71,7 +71,7 @@ evalTopLevel pfx (Decl n t me na) =
    (typ, decs) = evalType t
    name = mkIdent' (prefix pfx n) (Name 0)
 evalTopLevel pfx (Struct n fields na) = [CDeclExt $ struct (prefix pfx n) fields na True]
-evalTopLevel pfx (Union n cons na)    = [CDeclExt $ union (prefix pfx n) cons na]
+evalTopLevel pfx (Union n cons na)    = CDeclExt <$> union (prefix pfx n) cons na
 evalTopLevel _ (Module name tls _) = tls >>= (evalTopLevel $ Just name)
 evalTopLevel pfx (TypeDef name ty na) = [CDeclExt $ typedef ty (prefix pfx name) na]
 evalTopLevel _ (Import _ _ _) = [] -- TODO: handle
@@ -108,11 +108,18 @@ struct n f na td = CDecl (tydef ++ [ CTypeSpec (CSUType (CStruct CStructTag Noth
     (ty, tyDecs) = evalType t
 
 
-union :: Text -> [(Text, [(Text, Type)])] -> NodeAnnotation -> CDeclaration NodeInfo
-union n c na = CDecl [ CStorageSpec (CTypedef un)
-                     , CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ tag : (fmap cons c)) [] un) un)
-                     ] [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
+union :: Text -> [(Text, [(Text, Type)])] -> NodeAnnotation -> [CDeclaration NodeInfo]
+union n c na = 
+  [ CDecl [ CStorageSpec (CTypedef un)
+          , CTypeSpec (CEnumType (enum (prefix (Just n) "tag") ucons) un) 
+          ] [(Just (CDeclr (Just (mkIdent' (prefix (Just n) "tag") (Name 0))) [] Nothing [] un), Nothing, Nothing)] $ toNI na
+  , CDecl [ CStorageSpec (CTypedef un)
+          , CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ tag : (fmap cons c)) [] un) un)
+          ] [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
+  ]
   where
+    ucons :: [(Text, Maybe Integer)]
+    ucons = (\x -> (fst x, Nothing)) <$> c
     cons (n', fields) = struct n' fields na False
-    tag = CDecl [CTypeSpec (CTypeDef (mkIdent' "UInt8" (Name 0)) un)]
+    tag = CDecl [CTypeSpec (CTypeDef (mkIdent' (prefix (Just n) "tag") (Name 0)) un)]
                 [(Just (CDeclr (Just (mkIdent' "_$tag" (Name 0))) [] Nothing [] un), Nothing, Nothing)] un

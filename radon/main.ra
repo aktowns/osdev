@@ -4,19 +4,6 @@ union Option =
   Some(x: Int32)
   None
 
-# Specialization
-
-# union Either<'l, 'r> =
-#   Left(value: 'l)
-#   Right(value: 'r)
-# 
-# val x: Either<String, Int> = Left("Hello")
-
-# Generates con Either$String$Int :: String => $Left 
-# Generates con Int => Either$String$Int$Right
-# Generates enum Either$Tag { Left = 0; Right = 1 }
-# Generates 
-
 struct Testing =
   someField: Int32
 
@@ -27,5 +14,4 @@ main(argc: Int32, argv: String): Int32 =
   #  case None    = 0
 
   Console::printf("Hello %s!\n", "World")
-  Console::putchar('a')
   return 0

@@ -131,6 +131,10 @@ ppLit (CharLiteral n) = do
              ])
 
 ppType :: Type -> IO (D.NodeId, [D.Statement])
+ppType TyVoid = do
+  i <- freshId
+  return (i, [ nstmt "TyVoid" i ])
+
 ppType (TyDef ty)    = do
   i <- freshId
   j <- freshId
@@ -267,3 +271,14 @@ ppTL (Func name retTy args body _) = do
              , gstmt "body" m
              , edge i m
              ] ++ typ ++ argg ++ (edge m <$> links) ++ concat body')
+ppTL (Module name body _) = do 
+  i <- freshId
+  j <- freshId
+  (links, body') <- unzip <$> mapM ppTL body
+  m <- freshId
+
+  return (i, [ nstmt "module" i
+             , stmt name j
+             , gstmt "body" m
+             , edge i m
+             ] ++ (edge m <$> links) ++ concat body')
