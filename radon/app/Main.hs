@@ -27,6 +27,16 @@ extractors = [functionAliases]
 analyzers :: [Graph]
 analyzers = [graph]
 
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+{-# INLINE concatMapM #-}
+concatMapM op = foldr f (pure [])
+ where
+  f x xs = do
+    x' <- op x
+    if null x' then xs else do
+      xs' <- xs
+      pure $ x'++xs'
+
 evalFile :: FilePath -> IO String
 evalFile fp = do
   tys <- parseFile "stdlib/types.ra"

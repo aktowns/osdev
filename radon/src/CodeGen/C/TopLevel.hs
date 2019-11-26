@@ -12,7 +12,6 @@
 module CodeGen.C.TopLevel where
 
 import Data.String (IsString)
-import qualified Data.Text as T
 
 import Language.C.Data.Name
 import Language.C.Syntax.AST
@@ -95,7 +94,7 @@ alias retTy name (args, vararg) newName na = CDecl retTyp [ (Just (CDeclr (Just 
  where
   (retTyp, retDecs) = evalType retTy
   name' = mkIdent' newName (Name 0)
-  old' = CStrLit (cString $ T.unpack name) un
+  old' = CStrLit (cString $ toS name) un
   args' = [CFunDeclr (Right (evalAliasArgs args, vararg)) [] un]
 
 struct :: Text -> [(Text, Type)] -> NodeAnnotation -> Bool -> CDeclaration NodeInfo

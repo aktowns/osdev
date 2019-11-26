@@ -11,8 +11,6 @@
 -----------------------------------------------------------------------------
 module CodeGen.C.Expression where
 
-import qualified Data.Text as T
-
 import Language.C.Data.Name
 import Language.C.Data.Node (NodeInfo)
 import Language.C.Syntax.AST
@@ -57,7 +55,7 @@ evalExpr :: Expr -> CExpr
 evalExpr (Literal (IntLiteral i rep typ) na) =
   CConst (CIntConst (CInteger i (evalIntRep rep) (evalIntType typ)) $ toNI na)
 evalExpr (Literal (StrLiteral s) na) =
-  CConst (CStrConst (cString $ T.unpack s) $ toNI na)
+  CConst (CStrConst (cString $ toS s) $ toNI na)
 evalExpr (Literal (CharLiteral c) na) =
   CConst (CCharConst (cChar c) $ toNI na)
 evalExpr (Binary op e1 e2 na) =

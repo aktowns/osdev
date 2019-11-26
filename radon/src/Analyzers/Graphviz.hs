@@ -12,7 +12,6 @@
 module Analyzers.Graphviz where
 
 import qualified Dot as D
-import qualified Data.Text as T
 import Control.Monad (replicateM)
 
 import System.Random
@@ -32,19 +31,10 @@ instance Analyzer Graph where
     D.encodeToFile "out.dot" gviz
     pure Ok
 
-concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
-{-# INLINE concatMapM #-}
-concatMapM op = foldr f (pure [])
- where
-  f x xs = do
-    x' <- op x
-    if null x' then xs else do
-      xs' <- xs
-      pure $ x'++xs'
 
 freshId :: IO D.NodeId
 freshId = do
-  str <- T.pack <$> replicateM 12 (randomRIO ('a', 'z'))
+  str <- toS <$> replicateM 12 (randomRIO ('a', 'z'))
   pure $ D.NodeId (D.Id str) Nothing
 
 stmt :: Text -> D.NodeId -> D.Statement
@@ -145,7 +135,7 @@ ppLit (IntLiteral n rep typ) = do
   j <- freshId
 
   pure (i, [ nstmt "int literal" i
-           , stmt (T.pack $ show n) j
+           , stmt (toS $ show n) j
            , edge i j
            ])
 ppLit (StrLiteral n) = do
@@ -153,7 +143,7 @@ ppLit (StrLiteral n) = do
   j <- freshId
 
   pure (i, [ nstmt "string literal" i
-           , stmt (T.pack $ show n) j
+           , stmt (toS $ show n) j
            , edge i j
            ])
 ppLit (CharLiteral n) = do
@@ -161,7 +151,7 @@ ppLit (CharLiteral n) = do
   j <- freshId
 
   pure (i, [ nstmt "char literal" i
-           , stmt (T.pack $ show n) j
+           , stmt (toS $ show n) j
            , edge i j
            ])
 

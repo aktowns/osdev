@@ -50,6 +50,7 @@ library
                      , temporary
                      , dot
                      , random
+                     , string-conv
   mixins:              base (Prelude as BasePrelude)
                      , base hiding (Prelude)
   hs-source-dirs:      src

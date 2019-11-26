@@ -17,7 +17,6 @@ import Language.C.System.GCC
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.Map (Map)
 import qualified Data.Map as Map
 
 import System.IO (hClose)

@@ -17,16 +17,14 @@ import Language.C.Data.Name
 import Language.C.Data.Ident
 import Language.C.Data.Position
 
-import qualified Data.Text as T
-
 import AST
 
 un :: NodeInfo
 un = undefNode
 
 mkIdent' :: Text -> Name -> Ident
-mkIdent' x = mkIdent nopos (T.unpack x)
+mkIdent' x = mkIdent nopos (toS x)
 
 toNI :: NodeAnnotation -> NodeInfo
-toNI NodeAnnotation{..} = let NodeSource{..} = source in 
-    mkNodeInfoOnlyPos (position 0 (T.unpack filename) line column Nothing)
+toNI NodeAnnotation{..} = let NodeSource{..} = source in
+    mkNodeInfoOnlyPos (position 0 (toS filename) line column Nothing)

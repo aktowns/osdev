@@ -12,8 +12,6 @@
 -----------------------------------------------------------------------------
 module Parser.Embedded where
 
-import qualified Data.Text as T
-
 import Text.Megaparsec
 import Text.Megaparsec.Char (asciiChar)
 
@@ -23,7 +21,7 @@ import Parser.Common
 embeddedBlock :: Parser (Text, Language)
 embeddedBlock = do
   lang <- bracks language
-  body <- T.pack <$> (lbraceper *> manyTill asciiChar rbraceper)
+  body <- toS <$> (lbraceper *> manyTill asciiChar rbraceper)
   pure (body, lang)
 
 pExprEmbed :: Parser (Embedded 'EExpr)

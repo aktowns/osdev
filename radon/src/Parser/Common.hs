@@ -13,8 +13,6 @@ module Parser.Common where
 
 import Control.Monad (void)
 
-import qualified Data.Text as T
-
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -24,7 +22,7 @@ import AST
 newtype ParserError = ParserError Text deriving (Show, Eq, Ord)
 
 instance ShowErrorComponent ParserError where
-  showErrorComponent (ParserError msg) = T.unpack msg
+  showErrorComponent (ParserError msg) = toS msg
   errorComponentLen _ = 1
 
 type Parser = Parsec ParserError Text
@@ -276,15 +274,15 @@ charLiteral :: Parser Char
 charLiteral = between (char '\'') (char '\'') L.charLiteral
 
 stringLiteral :: Parser Text
-stringLiteral = T.pack <$> (char '\"' *> manyTill L.charLiteral (char '\"'))
+stringLiteral = toS <$> (char '\"' *> manyTill L.charLiteral (char '\"'))
 
 identifier :: Parser Text
 identifier =
   lexeme $
-    T.pack <$> ((:) <$> lowerChar <*> many (alphaNumChar <|> char '_') <?> "identifier")
+    toS <$> ((:) <$> lowerChar <*> many (alphaNumChar <|> char '_') <?> "identifier")
 
 cIdentifier :: Parser Text
-cIdentifier = lexeme $ T.pack <$> ((:) <$> upperChar <*> many alphaNumChar <?> "identifier")
+cIdentifier = lexeme $ toS <$> ((:) <$> upperChar <*> many alphaNumChar <?> "identifier")
 
 language :: Parser Language
 language = C <$ (char 'C' *> space)
@@ -310,7 +308,7 @@ bracesper = between lbraceper rbraceper
 getNA :: Parser NodeAnnotation
 getNA = do
   pos <- getSourcePos
-  pure $ NodeAnnotation { source = NodeSource (T.pack $ sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
+  pure $ NodeAnnotation { source = NodeSource (toS $ sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
                         , metadata = NodeMetadata { codegenIgnore = False, rewriterIgnore = False }
                         }
 
