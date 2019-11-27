@@ -3,7 +3,8 @@
 Syntax
 ======
 
-Radon is a whitespace sensitive transpiled language mainly targetting C. 
+Radon is a whitespace sensitive transpiled language mainly targetting C.
+The main use-case is low level development including embedded devices.
 
 Hello World
 ^^^^^^^^^^^
@@ -124,11 +125,37 @@ Importing/Aliasing
 Loops
 ^^^^^
 
+.. code-block:: c
+
+  for x in y: 
+    doSomething(x)
+
+  for (val x: Int32 = 0; x < 10; x++):
+    Console::printf("%i", x);
+
+  while x: Console::puts("LOOPING")
+
 Control Flow
 ^^^^^^^^^^^^
 
+.. code-block:: c
+
+  if x: performEffect()
+
+  if x:
+    doThings()
+  elif y:
+    doOtherThings()
+  else:
+    doSomeMoreThings();
+
 Inline Language Blocks
 ^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: c
+
+  [c]{% explain me more %}
+
 
 Documentation Tags
 ^^^^^^^^^^^^^^^^^^
