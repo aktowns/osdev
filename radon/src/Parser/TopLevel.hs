@@ -19,6 +19,8 @@ import Text.Megaparsec.Char (space)
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
+import AST.Phases.Parsed
+
 import Parser.Common
 import Parser.Expression
 import Parser.Type
@@ -34,15 +36,15 @@ import Parser.Statement
 -- > enum EnumType =
 -- >   Black
 -- >   Blue
-pEnum :: Parser TL
+pEnum :: Parser ToplPA
 pEnum = L.indentBlock scn preamb
  where
   preamb = do
-    pos <- getNA
+    pos <- getNS
     _ <- kEnum
     name <- cIdentifier
     _ <- equals
-    pure $ L.IndentSome Nothing (\x -> pure $ Enum name x pos) pEnumBody
+    pure $ L.IndentSome Nothing (pure . EnumPA pos name) pEnumBody
 
   pEnumBody :: Parser (Text, Maybe Integer)
   pEnumBody = (,) <$> cIdentifier <*> optional (equals *> integer)
@@ -53,15 +55,15 @@ pEnum = L.indentBlock scn preamb
 -- >   field1: Int32
 -- >   field2: Int64
 --
-pStruct :: Parser TL
+pStruct :: Parser ToplPA
 pStruct = L.indentBlock scn preamb
  where
   preamb = do
-    pos <- getNA
+    pos <- getNS
     _ <- kStruct
     name <- cIdentifier
     _ <- equals
-    pure $ L.IndentSome Nothing (\x -> pure $ Struct name x pos) pStructBody
+    pure $ L.IndentSome Nothing (pure . StructPA pos name) pStructBody
 
   pStructBody :: Parser (Text, Type)
   pStructBody = (,) <$> identifier <*> (colon *> pType)
@@ -73,15 +75,15 @@ pStruct = L.indentBlock scn preamb
 -- >   ConStr2(y: Int64)
 -- >   ConStr3
 --
-pUnion :: Parser TL
+pUnion :: Parser ToplPA
 pUnion = L.indentBlock scn preamb
  where
   preamb = do
-    pos <- getNA
+    pos <- getNS
     _ <- kUnion
     name <- cIdentifier
     _ <- equals
-    pure $ L.IndentSome Nothing (\x -> pure $ Union name x pos) pUnionBody
+    pure $ L.IndentSome Nothing (pure . UnionPA pos name) pUnionBody
 
   pUnionBody :: Parser (Text, [(Text, Type)])
   pUnionBody = (,) <$> cIdentifier <*> (fromMaybe [] <$> optional (parens pArgs))
@@ -103,25 +105,25 @@ pUnion = L.indentBlock scn preamb
 --
 -- > functionName(arg: Type): ReturnType =
 -- >   body
-pFunc :: Parser TL
+pFunc :: Parser ToplPA
 pFunc = try pFuncSmall <|> pFuncFull
  where
-  pFuncSmall :: Parser TL
+  pFuncSmall :: Parser ToplPA
   pFuncSmall = do
     (pos, quals, name, args, typ) <- pFuncPreamb
     body <- pStmt
-    pure $ Func name (foldr ($) typ quals) args [body] pos
+    pure $ FuncPA pos name (foldr ($) typ quals) args [body]
 
-  pFuncFull :: Parser TL
+  pFuncFull :: Parser ToplPA
   pFuncFull = L.indentBlock scn preamb
    where
     preamb = do
       (pos, quals, name, args, typ) <- pFuncPreamb
-      pure $ L.IndentSome Nothing (\x -> pure $ Func name (foldr ($) typ quals) args x pos) pStmt
+      pure $ L.IndentSome Nothing (pure . FuncPA pos name (foldr ($) typ quals) args) pStmt
 
-  pFuncPreamb :: Parser (NodeAnnotation, [Type -> Type], Text, ([(Text, Type)], Bool), Type)
+  pFuncPreamb :: Parser (NodeSource, [Type -> Type], Text, ([(Text, Type)], Bool), Type)
   pFuncPreamb = do
-      pos <- getNA
+      pos <- getNS
       quals <- many pFunQual
       name <- identifier
       args <- optional $ parens pArgs
@@ -145,27 +147,27 @@ pFunc = try pFuncSmall <|> pFuncFull
 -- or
 --
 -- > val XYZ: Int32
-pDecl :: Parser TL
+pDecl :: Parser ToplPA
 pDecl = do
-  pos <- getNA
+  pos <- getNS
   quals <- many pVarQual
   name <- kVal *> cIdentifier <* colon
   typ <- pType
   value <- optional $ equals *> pExpr
-  pure (Decl name (foldr ($) typ quals) value pos) <?> "val"
+  pure (DeclPA pos name (foldr ($) typ quals) value) <?> "val"
 
 -- | parses top level module declarations
 --
 -- > module Hello =
 -- >   val World: Int32 = 0
 --
-pModule :: Parser TL
+pModule :: Parser ToplPA
 pModule = L.nonIndented scn (L.indentBlock scn preamb)
  where
   preamb = do
-    pos <- getNA
+    pos <- getNS
     name <- kModule *> cIdentifier <* equals
-    pure $ L.IndentSome Nothing (\x -> pure $ Module name x pos) pTopLevelEntry
+    pure $ L.IndentSome Nothing (pure . ModulePA pos name) pTopLevelEntry
 
 -- | parses a type definition
 --
@@ -174,18 +176,18 @@ pModule = L.nonIndented scn (L.indentBlock scn preamb)
 --
 -- > type UInt8 = [C]{ uint8_t }
 --
-pTypeDef :: Parser TL
+pTypeDef :: Parser ToplPA
 pTypeDef = do
-  pos <- getNA
+  pos <- getNS
   _ <- kType
   ty <- cIdentifier
   _ <- equals
   ty2 <- pType
-  pure $ TypeDef ty ty2 pos
+  pure $ TypeDef pos ty ty2
 
-pAlias :: Parser TL
+pAlias :: Parser ToplPA
 pAlias = do
-  pos <- getNA
+  pos <- getNS
   _ <- kAlias
   lang <- optional language
   ty <- pType
@@ -193,7 +195,7 @@ pAlias = do
   args <- optional $ parens pArgs
   _ <- equals
   block <- identifier <|> cIdentifier
-  pure $ Alias lang (ty, name, fromMaybe ([], False) args) block pos
+  pure $ AliasPA pos lang (ty, name, fromMaybe ([], False) args) block
  where
   pArgs :: Parser ([Type], Bool)
   pArgs = try varArgs <|> justArgs
@@ -201,15 +203,15 @@ pAlias = do
     justArgs = (, False) <$> pType `sepBy` comma
     varArgs  = (,) <$> (pType `endBy` comma) <*> (True <$ varargs)
 
-pImport :: Parser TL
+pImport :: Parser ToplPA
 pImport = do
-  pos <- getNA
+  pos <- getNS
   _ <- kImport
   lang <- optional language
   file <- identifier <|> cIdentifier
-  pure $ Import lang file pos
+  pure $ ImportPA pos lang file
 
-pTopLevelEntry :: Parser TL
+pTopLevelEntry :: Parser ToplPA
 pTopLevelEntry = try pEnum
               <|> try pFunc
               <|> try pDecl
@@ -220,5 +222,5 @@ pTopLevelEntry = try pEnum
               <|> pAlias
               <|> pTypeDef
 
-pTopLevel :: Parser [TL]
+pTopLevel :: Parser [ToplPA]
 pTopLevel = some $ L.nonIndented scn $ pTopLevelEntry <* space

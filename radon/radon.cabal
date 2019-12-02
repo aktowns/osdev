@@ -19,7 +19,14 @@ description:
 library
   exposed-modules:     Analyzers.Analyzer
                      , Analyzers.Graphviz
+                     , AST.Base
+                     , AST.Expression
+                     , AST.NodeSource
+                     , AST.Statement
+                     , AST.TopLevel
                      , AST
+                     , AST.Phases.Undecorated
+                     , AST.Phases.Parsed
                      , CodeGen
                      , CodeGen.C.Common
                      , CodeGen.C.Expression

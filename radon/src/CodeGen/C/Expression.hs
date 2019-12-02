@@ -17,10 +17,11 @@ import Language.C.Syntax.AST
 import Language.C.Syntax.Constants
 
 import AST
+import AST.Phases.Parsed
 import CodeGen.C.Common
 import CodeGen.C.Type
 
-assign :: Expr -> Expr -> NodeInfo -> CExpr
+assign :: ExprPA -> ExprPA -> NodeInfo -> CExpr
 assign n v = CAssign CAssignOp (evalExpr n) (evalExpr v)
 
 evalBinaryOp :: BinaryOp -> CBinaryOp
@@ -34,7 +35,7 @@ evalBinaryOp ShiftRight = CShrOp
 evalBinaryOp BitwiseOr  = COrOp
 evalBinaryOp x          = error $ "unhandled " ++ show x
 
-evalBinary :: BinaryOp -> Expr -> Expr -> NodeInfo -> CExpr
+evalBinary :: BinaryOp -> ExprPA -> ExprPA -> NodeInfo -> CExpr
 evalBinary op e1 e2 = CBinary (evalBinaryOp op) (evalExpr e1) (evalExpr e2)
 
 evalIntRep :: IntRep -> CIntRepr
@@ -51,33 +52,33 @@ evalIntType = evalFlags
   eval Long     = FlagLong
   eval LongLong = FlagLongLong
 
-evalExpr :: Expr -> CExpr
-evalExpr (Literal (IntLiteral i rep typ) na) =
-  CConst (CIntConst (CInteger i (evalIntRep rep) (evalIntType typ)) $ toNI na)
-evalExpr (Literal (StrLiteral s) na) =
-  CConst (CStrConst (cString $ toS s) $ toNI na)
-evalExpr (Literal (CharLiteral c) na) =
-  CConst (CCharConst (cChar c) $ toNI na)
-evalExpr (Binary op e1 e2 na) =
-  evalBinary op e1 e2 $ toNI na
-evalExpr (FunCall n a na) =
-  CCall (CVar (mkIdent' n (Name 0)) un) (evalExpr <$> a) $ toNI na
-evalExpr (Identifier n na) =
-  CVar (mkIdent' n (Name 0)) $ toNI na
-evalExpr (ArraySub n e na) =
-  CIndex (CVar (mkIdent' n (Name 0)) $ toNI na) (evalExpr e) $ toNI na
-evalExpr (Unary UnaryPostfix Increment e na) =
-  CUnary CPostIncOp (evalExpr e) $ toNI na
-evalExpr (Assign n v na) =
-  assign n v $ toNI na
-evalExpr (Cast ty e na) = CCast (CDecl typ [decs'] un) (evalExpr e) $ toNI na
+evalExpr :: ExprPA -> CExpr
+evalExpr (LiteralPA ns (IntLiteral i rep typ)) =
+  CConst (CIntConst (CInteger i (evalIntRep rep) (evalIntType typ)) $ toNI ns)
+evalExpr (LiteralPA ns (StrLiteral s)) =
+  CConst (CStrConst (cString $ toS s) $ toNI ns)
+evalExpr (Literal ns (CharLiteral c)) =
+  CConst (CCharConst (cChar c) $ toNI ns)
+evalExpr (Binary ns op e1 e2) =
+  evalBinary op e1 e2 $ toNI ns
+evalExpr (FunCall ns n a) =
+  CCall (CVar (mkIdent' n (Name 0)) un) (evalExpr <$> a) $ toNI ns
+evalExpr (Identifier ns n) =
+  CVar (mkIdent' n (Name 0)) $ toNI ns
+evalExpr (ArraySub ns n e) =
+  CIndex (CVar (mkIdent' n (Name 0)) $ toNI ns) (evalExpr e) $ toNI ns
+evalExpr (Unary ns UnaryPostfix Increment e) =
+  CUnary CPostIncOp (evalExpr e) $ toNI ns
+evalExpr (Assign ns n v) =
+  assign n v $ toNI ns
+evalExpr (Cast ns ty e) = CCast (CDecl typ [decs'] un) (evalExpr e) $ toNI ns
  where
   (typ, decs)  = evalType ty
   decs' :: (Maybe (CDeclarator NodeInfo), Maybe a1, Maybe a2)
   decs' = (Just (CDeclr Nothing decs Nothing [] un), Nothing, Nothing)
-evalExpr (MemberRef ModMem (Identifier m _) (Identifier n _) na) =
-  CVar (mkIdent' (m <> "$" <> n) (Name 0)) $ toNI na
-evalExpr (MemberRef ModMem (Identifier m _) (FunCall n a _) na) =
-  CCall (CVar (mkIdent' (m <> "$" <> n) (Name 0)) un) (evalExpr <$> a) $ toNI na
+evalExpr (MemberRef ns ModMem (Identifier _ m) (Identifier _ n)) =
+  CVar (mkIdent' (m <> "$" <> n) (Name 0)) $ toNI ns
+evalExpr (MemberRef ns ModMem (Identifier _ m) (FunCall _ n a)) =
+  CCall (CVar (mkIdent' (m <> "$" <> n) (Name 0)) un) (evalExpr <$> a) $ toNI ns
 evalExpr x =
   error $ "unhandled " ++ show x
