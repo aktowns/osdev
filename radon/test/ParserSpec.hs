@@ -5,10 +5,9 @@ module ParserSpec where
 import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.RawString.QQ
-import Text.Megaparsec (parse)
 
-import Parser
 import AST
+import AST.Phases.Undecorated
 
 import Parser.Utils
 import Parser.TopLevel
@@ -20,13 +19,13 @@ spec =
       let source = deindent [r|
         static const val VGAWidth: Size = 80
       |]
-      parseASTList pTopLevel source `shouldParse` [Decl "VGAWidth" (TyStatic (TyConst (TyDef "Size")))
-        (Just (Literal (IntLiteral 80 Dec []) ())) ()]
+      parseASTList pTopLevel source `shouldParse` [DeclUD "VGAWidth" (TyStatic (TyConst (TyDef "Size")))
+        (Just (LiteralUD (IntLiteral 80 Dec [])))]
 
     it "declares a static inline const variable" $ do
       let source = "static inline const val X: Y = 1"
-      parseASTList pTopLevel source `shouldParse` [Decl "X" (TyStatic (TyInline (TyConst (TyDef "Y"))))
-        (Just (Literal (IntLiteral 1 Dec []) ())) ()]
+      parseASTList pTopLevel source `shouldParse` [DeclUD "X" (TyStatic (TyInline (TyConst (TyDef "Y"))))
+        (Just (LiteralUD (IntLiteral 1 Dec [])))]
 
     it "parses a function with multiple statements" $ do
       let source = deindent [r|
@@ -35,10 +34,11 @@ spec =
           x = 2
       |]
       parseASTList pTopLevel source `shouldParse`
-        [Func "hello" TyVoid ([], False) [
-          Declare "x" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) (),
-          SExpr (Assign (Identifier "x" ()) (Literal (IntLiteral 2 Dec []) ()) ()) ()
-        ] ()]
+        [FuncUD "hello" TyVoid ([], False) [
+          DeclareUD "x" (TyDef "Int32") (Just (LiteralUD (IntLiteral 1 Dec []))),
+          SExprUD (AssignUD (IdentifierUD "x") (LiteralUD (IntLiteral 2 Dec [])))
+         ]
+        ]
 
     it "parses multiple functions" $ do
       let source = deindent [r|
@@ -48,10 +48,10 @@ spec =
           y = 3
       |]
       parseASTList pTopLevel source `shouldParse`
-        [Func "hello" TyVoid ([], False) [
-            SExpr (Assign (Identifier "x" ()) (Literal (IntLiteral 2 Dec []) ()) ()) ()
-          ] (),
-         Func "world" TyVoid ([], False) [
-            SExpr (Assign (Identifier "y" ()) (Literal (IntLiteral 3 Dec []) ()) ()) ()
-          ]
-        ()]
+        [FuncUD "hello" TyVoid ([], False) [
+            SExprUD (AssignUD (IdentifierUD "x") (LiteralUD (IntLiteral 2 Dec [])))
+         ],
+         FuncUD "world" TyVoid ([], False) [
+            SExprUD (AssignUD (IdentifierUD "y") (LiteralUD (IntLiteral 3 Dec [])))
+         ]
+        ]

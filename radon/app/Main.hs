@@ -12,6 +12,8 @@ import Parser
 import CodeGen.C.Pretty
 import CodeGen.C.TopLevel
 
+import AST.Phases.Undecorated
+
 import Rewriters.Rewriter
 import Rewriters.C.FunctionAlias
 import Analyzers.Analyzer
@@ -42,7 +44,7 @@ evalFile fp = do
   tys <- parseFile "stdlib/types.ra"
   console <- parseFile "stdlib/console.ra"
   ast <- parseFile fp
-  _ <- analyze (head analyzers) ast
+  _ <- analyze (head analyzers) (toUndecorated <$> ast)
   let tree = tys ++ console ++ ast
   -- tree <- foldM (\tree rewriter -> rewrite rewriter tree) (tys ++ console ++ ast) resolvers
   preamb <- concatMapM (`extract` tree) extractors

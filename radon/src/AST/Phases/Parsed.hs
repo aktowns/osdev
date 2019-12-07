@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSynonyms, TypeFamilies #-}
+{-# LANGUAGE PatternSynonyms, TypeFamilies, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      : AST.Phases.Parsed
@@ -13,6 +13,7 @@
 module AST.Phases.Parsed where
 
 import AST
+import AST.Phases.Undecorated
 
 data Parsed
 
@@ -69,6 +70,17 @@ pattern ImportPA :: NodeSource -> Maybe Language -> Text -> ToplPA
 pattern ImportPA i1 i2 i3 <- Import i1 i2 i3
   where ImportPA i1 i2 i3 = Import i1 i2 i3
 
+instance ToUndecorated TopLevel Parsed where
+  toUndecorated (EnumPA _ a1 a2)       = EnumUD a1 a2
+  toUndecorated (UnionPA _ a1 a2)      = UnionUD a1 a2
+  toUndecorated (StructPA _ a1 a2)     = StructUD a1 a2
+  toUndecorated (FuncPA _ a1 a2 a3 a4) = FuncUD a1 a2 a3 (toUndecorated <$> a4)
+  toUndecorated (DeclPA _ a1 a2 a3)    = DeclUD a1 a2 (toUndecorated <$> a3)
+  toUndecorated (ModulePA _ a1 a2)     = ModuleUD a1 (toUndecorated <$> a2)
+  toUndecorated (TypeDefPA _ a1 a2)    = TypeDefUD a1 a2
+  toUndecorated (AliasPA _ a1 a2 a3)   = AliasUD a1 a2 a3
+  toUndecorated (ImportPA _ a1 a2)     = ImportUD a1 a2
+
 --------
 -- Expression
 
@@ -118,6 +130,17 @@ pattern MemberRefPA :: NodeSource -> MemberType -> ExprPA -> ExprPA -> ExprPA
 pattern MemberRefPA i1 i2 i3 i4 <- MemberRef i1 i2 i3 i4
   where MemberRefPA i1 i2 i3 i4 = MemberRef i1 i2 i3 i4
 
+instance ToUndecorated Expression Parsed where
+  toUndecorated (LiteralPA _ a1)         = LiteralUD a1
+  toUndecorated (BinaryPA _ a1 a2 a3)    = BinaryUD a1 (toUndecorated a2) (toUndecorated a3)
+  toUndecorated (UnaryPA _ a1 a2 a3)     = UnaryUD a1 a2 (toUndecorated a3)
+  toUndecorated (IdentifierPA _ a1)      = IdentifierUD a1
+  toUndecorated (FunCallPA _ a1 a2)      = FunCallUD a1 (toUndecorated <$> a2)
+  toUndecorated (ArraySubPA _ a1 a2)     = ArraySubUD a1 (toUndecorated a2)
+  toUndecorated (AssignPA _ a1 a2)       = AssignUD (toUndecorated a1) (toUndecorated a2)
+  toUndecorated (CastPA _ a1 a2)         = CastUD a1 (toUndecorated a2)
+  toUndecorated (MemberRefPA _ a1 a2 a3) = MemberRefUD a1 (toUndecorated a2) (toUndecorated a3)
+
 --------
 -- Statement
 
@@ -151,3 +174,11 @@ pattern IfPA i1 i2 i3 i4 i5 <- If i1 i2 i3 i4 i5
 pattern SExprPA :: NodeSource -> ExprPA -> StmtPA
 pattern SExprPA i1 i2 <- SExpr i1 i2
   where SExprPA i1 i2 = SExpr i1 i2
+
+instance ToUndecorated Statement Parsed where
+  toUndecorated (DeclarePA _ a1 a2 a3) = DeclareUD a1 a2 (toUndecorated <$> a3)
+  toUndecorated (ReturnPA _ a1)        = ReturnUD (toUndecorated <$> a1)
+  toUndecorated (WhilePA _ a1 a2)      = WhileUD (toUndecorated a1) (toUndecorated <$> a2)
+  toUndecorated (ForPA _ a1 a2 a3 a4)  = ForUD (toUndecorated a1) (toUndecorated a2) (toUndecorated a3) (toUndecorated <$> a4)
+  toUndecorated (IfPA _ a1 a2 a3 a4)   = IfUD (toUndecorated a1) (toUndecorated <$> a2) (bimap toUndecorated (fmap toUndecorated) <$> a3) ((fmap . fmap) toUndecorated a4)
+  toUndecorated (SExprPA _ a1)         = SExprUD (toUndecorated a1)

@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSynonyms, TypeFamilies #-}
+{-# LANGUAGE PatternSynonyms, TypeFamilies, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      : AST.Phases.Undecorated
@@ -151,3 +151,9 @@ pattern IfUD i1 i2 i3 i4 <- If _ i1 i2 i3 i4
 pattern SExprUD :: ExprUD -> StmtUD
 pattern SExprUD i1 <- SExpr _ i1
   where SExprUD i1 = SExpr () i1
+
+--------
+-- convert tree in any state to an undecorated tree
+
+class ToUndecorated a b where
+  toUndecorated :: a b -> a Undecorated

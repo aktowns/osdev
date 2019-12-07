@@ -9,6 +9,7 @@ import Text.Megaparsec (parse)
 
 import Parser.TopLevel
 import AST
+import AST.Phases.Undecorated
 
 import Parser.Utils
 
@@ -21,21 +22,25 @@ spec = do
           1
       |]
       parseAST pFunc source `shouldParse`
-        Func "hello" TyVoid ([], False) [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
+        FuncUD "hello" TyVoid ([], False) [SExprUD (LiteralUD (IntLiteral 1 Dec []))]
     it "parses a function with an argument" $ do
       let source = deindent [r|
         hello(argc: Int): Void =
           1
       |]
       parseAST pFunc source `shouldParse`
-        Func "hello" TyVoid ([("argc",TyDef "Int")], False) [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
+        FuncUD "hello" TyVoid ([("argc",TyDef "Int")], False) [
+          SExprUD (LiteralUD (IntLiteral 1 Dec []))
+        ]
     it "parses a function with varargs" $ do
       let source = deindent [r|
         hello(argc: Int, ...): Void =
           1
       |]
       parseAST pFunc source `shouldParse`
-        Func "hello" TyVoid ([("argc",TyDef "Int")], True) [SExpr (Literal (IntLiteral 1 Dec []) ()) ()] ()
+        FuncUD "hello" TyVoid ([("argc",TyDef "Int")], True) [
+          SExprUD (LiteralUD (IntLiteral 1 Dec []))
+        ]
     it "parses a function with multiple statements" $ do
       let source = deindent [r|
         hello: Void =
@@ -43,10 +48,10 @@ spec = do
           x = 2
       |]
       parseAST pFunc source `shouldParse`
-        Func "hello" TyVoid ([], False) [
-          Declare "x" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) (),
-          SExpr (Assign (Identifier "x" ()) (Literal (IntLiteral 2 Dec []) ()) ()) ()
-        ] ()
+        FuncUD "hello" TyVoid ([], False) [
+          DeclareUD "x" (TyDef "Int32") (Just (LiteralUD (IntLiteral 1 Dec []))),
+          SExprUD (AssignUD (IdentifierUD "x") (LiteralUD (IntLiteral 2 Dec [])))
+        ]
 
   describe "enum" $ do
     it "parses a simple enum" $ do
@@ -56,7 +61,7 @@ spec = do
           Blue  = 1
       |]
       parseAST pEnum source `shouldParse`
-        Enum "MyEnum" [("Black", Just 0), ("Blue", Just 1)] ()
+        EnumUD "MyEnum" [("Black", Just 0), ("Blue", Just 1)]
     it "doesn't require values" $ do
       let source = deindent [r|
         enum MyEnum =
@@ -64,20 +69,20 @@ spec = do
           Blue
       |]
       parseAST pEnum source `shouldParse`
-        Enum "MyEnum" [("Black", Nothing), ("Blue", Nothing)] ()
+        EnumUD "MyEnum" [("Black", Nothing), ("Blue", Nothing)]
 
   describe "val" $ do
     it "declares a variable with no value" $ do
       let source = "val X: Y"
-      parseAST pDecl source `shouldParse` Decl "X" (TyDef "Y") Nothing ()
+      parseAST pDecl source `shouldParse` DeclUD "X" (TyDef "Y") Nothing
     it "declares a variable with an expression" $ do
       let source = "val X: Y = 1"
-      parseAST pDecl source `shouldParse` Decl "X"
-        (TyDef "Y") (Just (Literal (IntLiteral 1 Dec []) ())) ()
+      parseAST pDecl source `shouldParse` DeclUD "X"
+        (TyDef "Y") (Just (LiteralUD (IntLiteral 1 Dec [])))
     it "declares a static inline const variable" $ do
       let source = "static inline const val X: Y = 1"
-      parseAST pDecl source `shouldParse` Decl "X"
-        (TyStatic (TyInline (TyConst (TyDef "Y")))) (Just (Literal (IntLiteral 1 Dec []) ())) ()
+      parseAST pDecl source `shouldParse` DeclUD "X"
+        (TyStatic (TyInline (TyConst (TyDef "Y")))) (Just (LiteralUD (IntLiteral 1 Dec [])))
 
   describe "modules" $ do
     it "parses a simple module" $ do
@@ -86,10 +91,10 @@ spec = do
           val ItsEasy: Int32 = 0
           val As123: Int32   = 1
       |]
-      parseAST pModule source `shouldParse` Module "ABC" [
-        Decl "ItsEasy" (TyDef "Int32") (Just (Literal (IntLiteral 0 Dec []) ())) (),
-        Decl "As123" (TyDef "Int32") (Just (Literal (IntLiteral 1 Dec []) ())) ()
-       ] ()
+      parseAST pModule source `shouldParse` ModuleUD "ABC" [
+        DeclUD "ItsEasy" (TyDef "Int32") (Just (LiteralUD (IntLiteral 0 Dec []))),
+        DeclUD "As123" (TyDef "Int32") (Just (LiteralUD (IntLiteral 1 Dec [])))
+       ]
 
     it "parses a more advanced module" $ do
       let source = deindent [r|
@@ -99,7 +104,7 @@ spec = do
           initialize: Void =
             SomeGlobal = 1
       |]
-      parseAST pModule source `shouldParse` Module "MyModule" [
-        Decl "SomeGlobal" (TyDef "Int32") (Just (Literal (IntLiteral 0 Dec []) ())) (),
-        Func "initialize" TyVoid ([],False) [SExpr (Assign (Identifier "SomeGlobal" ()) (Literal (IntLiteral 1 Dec []) ()) ()) ()] ()
-       ] ()
+      parseAST pModule source `shouldParse` ModuleUD "MyModule" [
+        DeclUD "SomeGlobal" (TyDef "Int32") (Just (LiteralUD (IntLiteral 0 Dec []))),
+        FuncUD "initialize" TyVoid ([],False) [SExprUD (AssignUD (IdentifierUD "SomeGlobal") (LiteralUD (IntLiteral 1 Dec [])))]
+       ]
