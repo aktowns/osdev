@@ -4,7 +4,6 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -25,4 +24,4 @@ jobs:
         cabal build
     - name: Run tests
       working-directory: radon
-      run: cabal test
+      run: cabal test --test-show-details=streaming

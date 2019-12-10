@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      : Analyzers.Graphviz
@@ -17,6 +18,7 @@ import Control.Monad (replicateM)
 import System.Random
 
 import AST
+import AST.Phases.Undecorated
 import Analyzers.Analyzer
 
 data Graph = GraphCon
@@ -24,7 +26,7 @@ data Graph = GraphCon
 graph :: Graph
 graph = GraphCon
 
-instance Analyzer Graph where
+instance Analyzer Graph Undecorated where
   analyze _ tree = do
     ptree <- concatMapM (fmap snd . ppTL) tree
     let gviz = D.DotGraph D.Strict D.Directed (Just "ast") ptree
@@ -77,26 +79,26 @@ sub n (D.NodeId i _) xs =
   D.StatementSubgraph $ D.Subgraph (Just i) $
     D.StatementAttribute (D.AttributeStatement D.Graph [D.Attribute "label" $ D.Id n]) : xs
 
-ppStmt :: Statement a -> IO (D.NodeId, [D.Statement])
-ppStmt (SExpr e _)  = do
+ppStmt :: StmtUD -> IO (D.NodeId, [D.Statement])
+ppStmt (SExprUD e)  = do
   i <- freshId
   (j, expr) <- ppExpr e
 
   pure (i, [ nstmt "stmt expr" i
            , edge i j
            ] ++ expr)
-ppStmt (Return (Just expr) _) = do
+ppStmt (ReturnUD (Just expr)) = do
   i <- freshId
   (j, expr') <- ppExpr expr
 
   pure (i, [ nstmt "return" i
            , edge i j
            ] ++ expr')
-ppStmt (Return Nothing _) = do
+ppStmt (ReturnUD Nothing) = do
   i <- freshId
 
   pure (i, [ nstmt "return" i ])
-ppStmt (Declare n t Nothing _) = do
+ppStmt (DeclareUD n t Nothing) = do
   i <- freshId
   j <- freshId
   (k, ty) <- ppType t
@@ -106,7 +108,7 @@ ppStmt (Declare n t Nothing _) = do
            , nedge "identifier" i j
            , nedge "type" i k
            ] ++ ty)
-ppStmt (Declare n t (Just e) _) = do
+ppStmt (DeclareUD n t (Just e)) = do
   i <- freshId
   j <- freshId
   (k, ty) <- ppType t
@@ -118,7 +120,7 @@ ppStmt (Declare n t (Just e) _) = do
            , nedge "type" i k
            , nedge "expr" i l
            ] ++ ty ++ ex)
-ppStmt (While e s _) = do
+ppStmt (WhileUD e s) = do
   i <- freshId
   (j, ex) <- ppExpr e
   k <- freshId
@@ -192,15 +194,15 @@ ppType (TyConst ty) = do
   pure (i, [ nstmt "TyConst" i
            , edge i j ] ++ ty')
 
-ppExpr :: Expression a -> IO (D.NodeId, [D.Statement])
-ppExpr (Literal lit' _) = do
+ppExpr :: ExprUD -> IO (D.NodeId, [D.Statement])
+ppExpr (LiteralUD lit') = do
   i <- freshId
   (j, lit) <- ppLit lit'
 
   pure (i, [ nstmt "literal" i
            , edge i j
            ] ++ lit)
-ppExpr (FunCall n a _) = do
+ppExpr (FunCallUD n a) = do
   i <- freshId
   j <- freshId
   (links, args) <- unzip <$> mapM ppExpr a
@@ -212,7 +214,7 @@ ppExpr (FunCall n a _) = do
            , gstmt "args" k
            , nedge "args" i k
            ] ++ (edge k <$> links) ++ concat args)
-ppExpr (MemberRef ModMem (Identifier m _) expr _) = do
+ppExpr (MemberRefUD ModMem (IdentifierUD m) expr) = do
   i <- freshId
   (j, expr') <- ppExpr expr
 
@@ -283,8 +285,8 @@ ppUnionCons xs = do
              , nedge "type" i k
              ] ++ typ)
 
-ppTL :: TopLevel a -> IO (D.NodeId, [D.Statement])
-ppTL (Union n cons _) = do
+ppTL :: ToplUD -> IO (D.NodeId, [D.Statement])
+ppTL (UnionUD n cons) = do
   i <- freshId
   j <- freshId
   (k, cons') <- ppUnionCons cons
@@ -294,7 +296,7 @@ ppTL (Union n cons _) = do
            , nedge "name" i j
            , nedge "cons" i k
            ] ++ cons')
-ppTL (Struct n fields _) = do
+ppTL (StructUD n fields) = do
   i <- freshId
   j <- freshId
   (k, fields') <- ppStructFields fields
@@ -304,7 +306,7 @@ ppTL (Struct n fields _) = do
            , nedge "name" i j
            , nedge "fields" i k
            ] ++ fields')
-ppTL (Func name retTy args body _) = do
+ppTL (FuncUD name retTy args body) = do
   i <- freshId
   j <- freshId
   (k, typ) <- ppType retTy
@@ -320,7 +322,7 @@ ppTL (Func name retTy args body _) = do
            , gstmt "body" m
            , edge i m
            ] ++ typ ++ argg ++ (edge m <$> links) ++ concat body')
-ppTL (Module name body _) = do
+ppTL (ModuleUD name body) = do
   i <- freshId
   j <- freshId
   (links, body') <- unzip <$> mapM ppTL body

@@ -19,12 +19,14 @@ import Language.C.Syntax.Constants
 import Language.C.Data.Node (NodeInfo)
 
 import AST
+import AST.Phases.Parsed
+
 import CodeGen.C.Common
 import CodeGen.C.Expression
 import CodeGen.C.Statement
 import CodeGen.C.Type
 
-initExpr :: Maybe Expr -> Maybe CInit
+initExpr :: Maybe ExprPA -> Maybe CInit
 initExpr v = v <&> \e -> CInitExpr (evalExpr e) un
 
 evalArgs :: [(Text, Type)] -> [CDecl]
@@ -40,7 +42,7 @@ enum name xs =
    splat (n, Just v) = (mkIdent' (name <> "$" <> n) (Name 1), Just (CConst $ CIntConst (cInteger v) un))
    splat (n, Nothing) = (mkIdent' (name <> "$" <> n) (Name 1), Nothing)
 
-typedef :: Type -> Text -> NodeAnnotation -> CDecl
+typedef :: Type -> Text -> NodeSource -> CDecl
 typedef ty name na = CDecl (CStorageSpec (CTypedef un) : t')
     [(Just (CDeclr (Just (mkIdent' name (Name 0))) d Nothing [] un), Nothing, Nothing)] $ toNI na
  where (t', d) = evalType ty
@@ -57,27 +59,26 @@ prefix :: (Semigroup a, IsString a) => Maybe a -> a -> a
 prefix (Just x) y = x <> "$" <> y
 prefix _ y = y
 
-evalTopLevel :: Maybe Text -> TL -> [CExtDecl]
-evalTopLevel pfx (Enum n v na) =
+evalTopLevel :: Maybe Text -> ToplPA -> [CExtDecl]
+evalTopLevel pfx (Enum ns n v) =
   [CDeclExt $ CDecl [
       CStorageSpec (CTypedef un),CTypeSpec (CEnumType (enum (prefix pfx n) v) un)
-    ] [(Just (CDeclr (Just (mkIdent' n (Name 0))) [] Nothing [] un), Nothing, Nothing)] $ toNI na]
-evalTopLevel pfx (Func n t a b na) =
-  [CFDefExt $ func (prefix pfx n) t a (fmap evalStmt b) $ toNI na]
-evalTopLevel pfx (Decl n t me na) =
-  [CDeclExt $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), initExpr me, Nothing)] $ toNI na]
+    ] [(Just (CDeclr (Just (mkIdent' n (Name 0))) [] Nothing [] un), Nothing, Nothing)] $ toNI ns]
+evalTopLevel pfx (Func ns n t a b) =
+  [CFDefExt $ func (prefix pfx n) t a (fmap evalStmt b) $ toNI ns]
+evalTopLevel pfx (Decl ns n t me) =
+  [CDeclExt $ CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), initExpr me, Nothing)] $ toNI ns]
  where
    (typ, decs) = evalType t
    name = mkIdent' (prefix pfx n) (Name 0)
-evalTopLevel pfx (Struct n fields na) = [CDeclExt $ struct (prefix pfx n) fields na True]
-evalTopLevel pfx (Union n cons na)    = CDeclExt <$> union (prefix pfx n) cons na
-evalTopLevel _ (Module name tls _) = tls >>= evalTopLevel (Just name)
-evalTopLevel pfx (TypeDef name ty na) = [CDeclExt $ typedef ty (prefix pfx name) na]
+evalTopLevel pfx (Struct ns n fields) = [CDeclExt $ struct (prefix pfx n) fields ns True]
+evalTopLevel pfx (Union ns n cons)    = CDeclExt <$> union (prefix pfx n) cons ns
+evalTopLevel _ (Module _ name tls) = tls >>= evalTopLevel (Just name)
+evalTopLevel pfx (TypeDef ns name ty) = [CDeclExt $ typedef ty (prefix pfx name) ns]
 evalTopLevel _ Import {} = [] -- TODO: handle
-evalTopLevel pfx (Alias (Just C) (retTy, from, args) to na) = [CDeclExt $ alias retTy from args (prefix pfx to) na]
-evalTopLevel _ x = error $ "unhandled: " ++ show x
+evalTopLevel pfx (Alias ns (Just C) (retTy, from, args) to) = [CDeclExt $ alias retTy from args (prefix pfx to) ns]
 
-evalTopLevels :: [TL] -> CTranslUnit
+evalTopLevels :: [ToplPA] -> CTranslUnit
 evalTopLevels xs = CTranslUnit (xs >>= evalTopLevel Nothing) un
 
 prependC :: CTranslUnit -> [CExtDecl] -> CTranslUnit
@@ -89,7 +90,7 @@ evalAliasArgs = fmap eval
    eval t = let (t', d) = evalType t in
      CDecl t' [(Just (CDeclr Nothing d Nothing [] un), Nothing, Nothing)] un
 
-alias :: Type -> Text -> ([Type], Bool) -> Text -> NodeAnnotation -> CDecl
+alias :: Type -> Text -> ([Type], Bool) -> Text -> NodeSource -> CDecl
 alias retTy name (args, vararg) newName na = CDecl retTyp [ (Just (CDeclr (Just name') (args' ++ retDecs) (Just old') [] un), Nothing, Nothing)] $ toNI na
  where
   (retTyp, retDecs) = evalType retTy
@@ -97,7 +98,7 @@ alias retTy name (args, vararg) newName na = CDecl retTyp [ (Just (CDeclr (Just 
   old' = CStrLit (cString $ toS name) un
   args' = [CFunDeclr (Right (evalAliasArgs args, vararg)) [] un]
 
-struct :: Text -> [(Text, Type)] -> NodeAnnotation -> Bool -> CDeclaration NodeInfo
+struct :: Text -> [(Text, Type)] -> NodeSource -> Bool -> CDeclaration NodeInfo
 struct n f na td = CDecl (tydef ++ [ CTypeSpec (CSUType (CStruct CStructTag Nothing (Just $ fmap field f) [] un) un)
                          ]) [ (Just (CDeclr (Just $ mkIdent' n (Name 0)) [] Nothing [] un), Nothing, Nothing) ] $ toNI na
  where
@@ -107,7 +108,7 @@ struct n f na td = CDecl (tydef ++ [ CTypeSpec (CSUType (CStruct CStructTag Noth
     (ty, tyDecs) = evalType t
 
 
-union :: Text -> [(Text, [(Text, Type)])] -> NodeAnnotation -> [CDeclaration NodeInfo]
+union :: Text -> [(Text, [(Text, Type)])] -> NodeSource -> [CDeclaration NodeInfo]
 union n c na =
   [ CDecl [ CStorageSpec (CTypedef un)
           , CTypeSpec (CEnumType (enum (prefix (Just n) "tag") ucons) un)

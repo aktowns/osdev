@@ -19,54 +19,52 @@ import Text.Megaparsec
 import Text.Megaparsec.Char (char)
 
 import AST
+import AST.Phases.Parsed
 import Parser.Common
 import Parser.Type
 
-table :: [[Operator Parser Expr]]
-table = [ [ binary  dot          $ MemberRef FieldMem
-          , binary  larrow       $ MemberRef PtrMem
-          , binary  coloncolon   $ MemberRef ModMem ]
-        , [ prefix  minusminus   $ Unary  UnaryPrefix  Decrement
-          , prefix  plusplus     $ Unary  UnaryPrefix  Increment
-          , postfix minusminus   $ Unary  UnaryPostfix Decrement
-          , postfix plusplus     $ Unary  UnaryPostfix Increment ]
-        , [ prefix  (sing minus) $ Unary  UnaryPrefix  Negate
-          , prefix  (sing plus)  $ Unary  UnaryPrefix  Positive ]
-        , [ binary  star         $ Binary Mul
-          , binary  fslash       $ Binary Div ]
-        , [ binary  plus         $ Binary Add
-          , binary  minus        $ Binary Sub ]
-        , [ binary  shiftl       $ Binary ShiftLeft
-          , binary  shiftr       $ Binary ShiftRight ]
-        , [ binary  langle       $ Binary LessThan
-          , binary  langleeq     $ Binary LessThanEqual
-          , binary  rangle       $ Binary GreaterThan
-          , binary  rangleeq     $ Binary GreaterThanEqual ]
-        , [ binary  eqeq         $ Binary Equals
-          , binary  neq          $ Binary NotEquals ]
-        , [ binary  amp          $ Binary BitwiseAnd ]
-        , [ binary  caret        $ Binary BitwiseXor ]
-        , [ binary  pipe         $ Binary BitwiseOr ]
-        , [ binary  ampamp       $ Binary LogicalAnd ]
-        , [ binary  pipepipe     $ Binary LogicalOr ]
+table :: [[Operator Parser ExprPA]]
+table = [ [ binary  dot          $ \p -> MemberRef p FieldMem
+          , binary  larrow       $ \p -> MemberRef p PtrMem
+          , binary  coloncolon   $ \p -> MemberRef p ModMem ]
+        , [ prefix  minusminus   $ \p -> Unary p UnaryPrefix  Decrement
+          , prefix  plusplus     $ \p -> Unary p UnaryPrefix  Increment
+          , postfix minusminus   $ \p -> Unary p UnaryPostfix Decrement
+          , postfix plusplus     $ \p -> Unary p UnaryPostfix Increment ]
+        , [ prefix  (sing minus) $ \p -> Unary p UnaryPrefix  Negate
+          , prefix  (sing plus)  $ \p -> Unary p UnaryPrefix  Positive ]
+        , [ binary  star         $ \p -> Binary p Mul
+          , binary  fslash       $ \p -> Binary p Div ]
+        , [ binary  plus         $ \p -> Binary p Add
+          , binary  minus        $ \p -> Binary p Sub ]
+        , [ binary  shiftl       $ \p -> Binary p ShiftLeft
+          , binary  shiftr       $ \p -> Binary p ShiftRight ]
+        , [ binary  langle       $ \p -> Binary p LessThan
+          , binary  langleeq     $ \p -> Binary p LessThanEqual
+          , binary  rangle       $ \p -> Binary p GreaterThan
+          , binary  rangleeq     $ \p -> Binary p GreaterThanEqual ]
+        , [ binary  eqeq         $ \p -> Binary p Equals
+          , binary  neq          $ \p -> Binary p NotEquals ]
+        , [ binary  amp          $ \p -> Binary p BitwiseAnd ]
+        , [ binary  caret        $ \p -> Binary p BitwiseXor ]
+        , [ binary  pipe         $ \p -> Binary p BitwiseOr ]
+        , [ binary  ampamp       $ \p -> Binary p LogicalAnd ]
+        , [ binary  pipepipe     $ \p -> Binary p LogicalOr ]
         ]
  where
-  binary :: Parser b -> (a -> a -> NodeAnnotation -> a) -> Operator Parser a
-  binary name f = InfixL $ (getNA <&> niflip3 f) <* name
-   where
-    niflip3 :: (a -> b -> c -> d) -> c -> a -> b -> d
-    niflip3 f' e3 e1 e2 = f' e1 e2 e3
+  binary :: Parser b -> (NodeSource -> a -> a -> a) -> Operator Parser a
+  binary name f = InfixL $ (getNS <&> f) <* name
 
-  prefix :: Parser b -> (a -> NodeAnnotation -> a) -> Operator Parser a
-  prefix name f = Prefix $ (getNA <&> flip f) <* name
+  prefix :: Parser b -> (NodeSource -> a -> a) -> Operator Parser a
+  prefix name f = Prefix $ (getNS <&> f) <* name
 
   sing :: Parser a -> Parser a
   sing n = try (n <* notFollowedBy n)
 
-  postfix :: Parser b -> (a -> NodeAnnotation -> a) -> Operator Parser a
-  postfix name f = Postfix $ (getNA <&> flip f) <* name
+  postfix :: Parser b -> (NodeSource -> a -> a) -> Operator Parser a
+  postfix name f = Postfix $ (getNS <&> f) <* name
 
-pInteger :: Parser Expr
+pInteger :: Parser ExprPA
 pInteger = try pHex <|> try pOct <|> pInt
  where
   intTy :: Parser [IntType]
@@ -75,43 +73,43 @@ pInteger = try pHex <|> try pOct <|> pInt
        <|> try (LongLong <$ (char 'l' >> char 'l'))
        <|> (Long <$ char 'l'))
 
-  pHex :: Parser Expr
+  pHex :: Parser ExprPA
   pHex = do
-    p <- getNA
+    p <- getNS
     _ <- char '0' >> char 'x'
     i <- hexadecimal
     t <- intTy
-    pure $ Literal (IntLiteral i Hex t) p
+    pure $ LiteralPA p (IntLiteral i Hex t)
 
-  pOct :: Parser Expr
+  pOct :: Parser ExprPA
   pOct = do
-    p <- getNA
+    p <- getNS
     _ <- char '0'
     i <- octal
     t <- intTy
-    pure $ Literal (IntLiteral i Oct t) p
+    pure $ LiteralPA p (IntLiteral i Oct t)
 
-  pInt :: Parser Expr
+  pInt :: Parser ExprPA
   pInt = do
-    p <- getNA
+    p <- getNS
     i <- integer
     t <- intTy
-    pure $ Literal (IntLiteral i Dec t) p
+    pure $ LiteralPA p (IntLiteral i Dec t)
 
-pString :: Parser Expr
-pString = Literal . StrLiteral <$> stringLiteral <*> getNA
+pString :: Parser ExprPA
+pString = LiteralPA <$> getNS <*> (StrLiteral <$> stringLiteral)
 
-pChar :: Parser Expr
-pChar = Literal . CharLiteral <$> charLiteral <*> getNA
+pChar :: Parser ExprPA
+pChar = LiteralPA <$> getNS <*> (CharLiteral <$> charLiteral)
 
-pFuncCall :: Parser Expr
+pFuncCall :: Parser ExprPA
 pFuncCall = do
-  pos <- getNA
+  pos <- getNS
   name <- identifier
   args <- parens $ pExpr `sepBy` comma
-  pure $ FunCall name args pos
+  pure $ FunCallPA pos name args
 
-pTerm :: Parser Expr
+pTerm :: Parser ExprPA
 pTerm = pString
     <|> pInteger
     <|> pChar
@@ -122,35 +120,35 @@ pTerm = pString
     <|> pIdentifier
     <|> pCIdentifier
 
-pCast :: Parser Expr
+pCast :: Parser ExprPA
 pCast = do
-  pos <- getNA
+  pos <- getNS
   typ <- parens pType
   expr <- pExpr
-  pure $ Cast typ expr pos
+  pure $ CastPA pos typ expr
 
-pIdentifier :: Parser Expr
-pIdentifier = Identifier <$> identifier <*> getNA
+pIdentifier :: Parser ExprPA
+pIdentifier = Identifier <$> getNS <*> identifier
 
-pCIdentifier :: Parser Expr
-pCIdentifier = Identifier <$> cIdentifier <*> getNA
+pCIdentifier :: Parser ExprPA
+pCIdentifier = IdentifierPA <$> getNS <*> cIdentifier
 
-pArraySub :: Parser Expr
+pArraySub :: Parser ExprPA
 pArraySub = do
-  pos <- getNA
+  pos <- getNS
   ident <- identifier <|> cIdentifier
   subsc <- bracks pExpr
-  pure $ ArraySub ident subsc pos
+  pure $ ArraySubPA pos ident subsc
 
-pAssign :: Parser Expr
+pAssign :: Parser ExprPA
 pAssign = do
-  pos <- getNA
+  pos <- getNS
   left <- try pArraySub <|> pIdentifier <|> pCIdentifier
   _ <- equals
   right <- pExpr
-  pure $ Assign left right pos
+  pure $ AssignPA pos left right
 
-pExpr :: Parser Expr
+pExpr :: Parser ExprPA
 pExpr = makeExprParser pTerm table >>= \case
   x@(MemberRef _ _ (Identifier _ _) _) -> pure x
   x@(MemberRef _ _ FunCall {} _)       -> pure x

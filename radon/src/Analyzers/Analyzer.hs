@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      : Analyzers.Analyzer
@@ -15,5 +16,5 @@ import AST
 
 data AnalyzerResult = Ok | Failed Text deriving (Show)
 
-class Analyzer a where
-  analyze :: a -> [TL] -> IO AnalyzerResult
+class Analyzer a b where
+  analyze :: a -> [TopLevel b] -> IO AnalyzerResult

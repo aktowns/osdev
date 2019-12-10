@@ -1,0 +1,15 @@
+name: Linting
+
+on: [pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Check code
+      uses: aktowns/ghlint@master
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        path: radon/src

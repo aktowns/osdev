@@ -16,6 +16,8 @@ import Language.C.Data.Node (NodeInfo)
 import Language.C.Syntax.AST
 
 import AST
+import AST.Phases.Parsed
+
 import CodeGen.C.Common
 import CodeGen.C.Expression
 import CodeGen.C.Type
@@ -28,21 +30,21 @@ declare t n v = CDecl typ [(Just (CDeclr (Just name) decs Nothing [] un), pval v
   pval :: Functor f => f (CExpression NodeInfo) -> f (CInitializer NodeInfo)
   pval val = val <&> \e -> CInitExpr e un
 
-evalStmt :: Stmt -> CBlockItem
-evalStmt (Declare n t mv na) =
-  CBlockDecl $ declare t n (mv <&> evalExpr) $ toNI na
-evalStmt (Return e na) =
-  CBlockStmt $ CReturn (evalExpr <$> e) $ toNI na
-evalStmt (While c b na) =
-  CBlockStmt $ CWhile (evalExpr c) (CCompound [] (fmap evalStmt b) $ toNI na) False $ toNI na
-evalStmt (SExpr e na) =
-  CBlockStmt $ CExpr (Just $ evalExpr e) $ toNI na
-evalStmt (For (Declare n t mv na') c f b na) =
+evalStmt :: StmtPA -> CBlockItem
+evalStmt (Declare ns n t mv) =
+  CBlockDecl $ declare t n (mv <&> evalExpr) $ toNI ns
+evalStmt (Return ns e) =
+  CBlockStmt $ CReturn (evalExpr <$> e) $ toNI ns
+evalStmt (While ns c b) =
+  CBlockStmt $ CWhile (evalExpr c) (CCompound [] (fmap evalStmt b) $ toNI ns) False $ toNI ns
+evalStmt (SExpr ns e) =
+  CBlockStmt $ CExpr (Just $ evalExpr e) $ toNI ns
+evalStmt (For ns (Declare ns' n t mv) c f b) =
   CBlockStmt $
-    CFor (Right $ declare t n (mv <&> evalExpr) $ toNI na')
+    CFor (Right $ declare t n (mv <&> evalExpr) $ toNI ns')
          (Just $ evalExpr c)
          (Just $ evalExpr f)
-         (CCompound [] (fmap evalStmt b) $ toNI na) $ toNI na
+         (CCompound [] (fmap evalStmt b) $ toNI ns) $ toNI ns
 evalStmt x =
   error $ "unhandled " ++ show x
 

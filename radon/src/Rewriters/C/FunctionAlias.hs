@@ -23,6 +23,8 @@ import System.IO (hClose)
 import System.IO.Temp(withSystemTempFile)
 
 import AST
+import AST.Phases.Parsed
+
 import Rewriters.Rewriter
 
 -- | Looks for external alias references and builds aliases them with an asm label
@@ -50,7 +52,7 @@ data FunctionAliases = FunctionAliases { cFuncs :: Map Text CDecl
 functionAliases :: FunctionAliases
 functionAliases = FunctionAliases { cFuncs = Map.empty, aliases = Map.empty }
 
-instance Extractor FunctionAliases [CExtDecl] where
+instance Extractor FunctionAliases [CExtDecl] Parsed where
   extract _ xs = do
     let headers = catMaybes $ collectImports <$> xs
     Right (CTranslUnit decls _) <- withSystemTempFile "resolver-function-alias.c" $ \fp hndl -> do
@@ -59,6 +61,6 @@ instance Extractor FunctionAliases [CExtDecl] where
       parseCFile (newGCC "gcc") Nothing [] fp
     pure decls
 
-collectImports :: TL -> Maybe Text
-collectImports (Import (Just C) text _) = Just $ "#include <" <> text <> ".h>"
+collectImports :: ToplPA -> Maybe Text
+collectImports (Import _ (Just C) text) = Just $ "#include <" <> text <> ".h>"
 collectImports _ = Nothing

@@ -25,6 +25,5 @@ un = undefNode
 mkIdent' :: Text -> Name -> Ident
 mkIdent' x = mkIdent nopos (toS x)
 
-toNI :: NodeAnnotation -> NodeInfo
-toNI NodeAnnotation{..} = let NodeSource{..} = source in
-    mkNodeInfoOnlyPos (position 0 (toS filename) line column Nothing)
+toNI :: NodeSource -> NodeInfo
+toNI NodeSource{..} = mkNodeInfoOnlyPos (position 0 (toS filename) line column Nothing)

@@ -17,6 +17,8 @@ import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import AST
+import AST.Phases.Parsed
+
 import Parser.Common
 import Parser.Expression
 import Parser.Type
@@ -24,22 +26,22 @@ import Parser.Type
 -- | Parses a return statement
 --
 -- > return 1
-pReturn :: Parser Stmt
-pReturn = Return <$> (kReturn *> optional pExpr) <*> getNA <?> "return"
+pReturn :: Parser StmtPA
+pReturn = ReturnPA <$> getNS <*> (kReturn *> optional pExpr) <?> "return"
 
 -- | Parses a val declaration
 --
 -- > val x: String = "hi"
-pDeclare :: Parser Stmt
+pDeclare :: Parser StmtPA
 pDeclare = do
-  pos <- getNA
+  pos <- getNS
   quals <- many pVarQual
   _ <- kVal
   name <- identifier
   _ <- colon
   typ <- pType
   value <- optional (equals *> pExpr)
-  pure (Declare name (foldr ($) typ quals) value pos) <?> "val"
+  pure (DeclarePA pos name (foldr ($) typ quals) value) <?> "val"
 
 -- | Parses a while statement
 --
@@ -50,25 +52,25 @@ pDeclare = do
 -- > statement1
 -- > statement2
 -- > ..
-pWhile :: Parser Stmt
+pWhile :: Parser StmtPA
 pWhile = pWhileSmall <|> pWhileFull <?> "while"
  where
-  pWhileSmall :: Parser Stmt
+  pWhileSmall :: Parser StmtPA
   pWhileSmall = do
     (pos, cond) <- pWhileStart
     body <- pStmt
-    pure $ While cond [body] pos
+    pure $ WhilePA pos cond [body]
 
-  pWhileFull :: Parser Stmt
+  pWhileFull :: Parser StmtPA
   pWhileFull = L.indentBlock scn preamb
    where
     preamb = do
       (pos, cond) <- pWhileStart
-      pure $ L.IndentSome Nothing (\x -> pure $ While cond x pos) pStmt
+      pure $ L.IndentSome Nothing (pure . WhilePA pos cond) pStmt
 
-  pWhileStart :: Parser (NodeAnnotation, Expr)
+  pWhileStart :: Parser (NodeSource, ExprPA)
   pWhileStart = do
-    pos <- getNA
+    pos <- getNS
     _ <- kWhile
     cond <- parens pExpr
     _ <- colon
@@ -95,25 +97,25 @@ pWhile = pWhileSmall <|> pWhileFull <?> "while"
 -- >  statement1
 -- >  statement2
 -- > ..
-pFor :: Parser Stmt
+pFor :: Parser StmtPA
 pFor = (pForSmall <|> pForFull) <?> "for"
  where
-  pForSmall :: Parser Stmt
+  pForSmall :: Parser StmtPA
   pForSmall = do
     (pos, initial, cond, fin) <- pForPreamb
     body <- pStmt
-    pure $ For initial cond fin [body] pos
+    pure $ ForPA pos initial cond fin [body]
 
-  pForFull :: Parser Stmt
+  pForFull :: Parser StmtPA
   pForFull = L.indentBlock scn preamb
    where
     preamb = do
       (pos, initial, cond, fin) <- pForPreamb
-      pure $ L.IndentSome Nothing (\x -> pure $ For initial cond fin x pos) pStmt
+      pure $ L.IndentSome Nothing (pure . ForPA pos initial cond fin) pStmt
 
-  pForPreamb :: Parser (NodeAnnotation, Stmt, Expr, Expr)
+  pForPreamb :: Parser (NodeSource, StmtPA, ExprPA, ExprPA)
   pForPreamb = do
-    pos <- getNA
+    pos <- getNS
     _ <- kFor
     _ <- lparen
     initial <- pStmt
@@ -126,9 +128,9 @@ pFor = (pForSmall <|> pForFull) <?> "for"
     pure (pos, initial, cond, fin)
 
 -- | Parses expressions as a statement throwing away the side effect
-pStmtExpr :: Parser Stmt
-pStmtExpr = SExpr <$> pExpr <*> getNA
+pStmtExpr :: Parser StmtPA
+pStmtExpr = SExprPA <$> getNS <*> pExpr
 
 -- | Tries parsing any of the statements
-pStmt :: Parser Stmt
+pStmt :: Parser StmtPA
 pStmt = pReturn <|> pDeclare <|> try pWhile <|> try pFor <|> pStmtExpr
