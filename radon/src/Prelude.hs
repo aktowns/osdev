@@ -19,6 +19,7 @@ import qualified BasePrelude as P
 import Data.Functor as Exports ((<&>))
 import Data.Text as Exports (Text)    -- Bring Text into scope by default
 import Data.Map as Exports (Map)      -- Bring Map into scope by default
+import Data.Set as Exports (Set)
 
 import Data.Int as Exports
 import Data.Tuple as Exports

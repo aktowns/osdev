@@ -15,6 +15,8 @@ module AST.Base where
 data Type = TyVoid
           | TyPtr Type
           | TyDef Text
+          | TyVar Text
+          | TyFun Type Type
           | TyStatic Type
           | TyInline Type
           | TyConst Type

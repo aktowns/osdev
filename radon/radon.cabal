@@ -27,6 +27,7 @@ library
                      , AST
                      , AST.Phases.Undecorated
                      , AST.Phases.Parsed
+                     , AST.Phases.Typed
                      , CodeGen
                      , CodeGen.C.Common
                      , CodeGen.C.Expression
@@ -58,6 +59,7 @@ library
                      , dot
                      , random
                      , string-conv
+                     , mtl
   mixins:              base (Prelude as BasePrelude)
                      , base hiding (Prelude)
   hs-source-dirs:      src
