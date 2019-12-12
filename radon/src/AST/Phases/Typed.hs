@@ -96,6 +96,23 @@ varBind u t | t == TyVar u         = pure nullSubst
             | u `Set.member` ftv t = throwError "occurs check"
             | otherwise            = pure $ Map.singleton u t
 
+
+-- Given a function call add(1,2)
+-- add: TyFun Int (TyFun Int Int)
+
+typeConversion :: ExprPA -> Type
+typeConversion _ = TyVoid
+
+fakeCurry :: ExprPA -> TI Type
+fakeCurry (FunCall _ n []) = TyFun TyVoid (TyVar "ret") -- nullary
+fakeCurry (FunCall _ n (x:[])) = TyFun (typeConversion x) (TyVar "ret") -- unary
+fakeCurry (FunCall _ n (x:y:[])) = TyFun (typeConversion x) (TyFun (typeConversion y) (TyVar "ret")) -- binary
+fakeCurry (FunCall _ n xs) = (foldl applyFuncs (TyFun (typeConversion $ xs !! 0)) (typeConversion <$> tail xs)) (TyVar "ret") -- n-ary
+ where
+  -- partially applied type composition
+  applyFuncs :: (Type -> Type) -> Type -> (Type -> Type)
+  applyFuncs partial ty = \x -> partial (TyFun ty x)
+
 ti :: TypeEnv -> ExprPA -> TI (Subst, Type)
 ti (TypeEnv env) (Identifier _ n) =
   case Map.lookup n env of
