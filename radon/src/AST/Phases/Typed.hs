@@ -17,9 +17,9 @@ type ToplTC = TopLevel Typed
 type ExprTC = Expression Typed
 type StmtTC = Statement Typed
 
-data Scheme = Scheme [Text] Type
+data Scheme = Scheme [Text] Type deriving (Show)
 
-newtype TypeEnv = TypeEnv (Map Text Scheme)
+newtype TypeEnv = TypeEnv (Map Text Scheme) deriving (Show)
 
 type Subst = Map Text Type
 
@@ -34,7 +34,7 @@ runTI :: TI a -> (Either Text a, TIState)
 runTI m = runIdentity $ runStateT (runExceptT (unTI m)) initState
  where
   initState = TIState 0 Map.empty
-
+ 
 newTyVar :: Text -> TI Type
 newTyVar pfx = do
   s <- get
@@ -100,18 +100,23 @@ varBind u t | t == TyVar u         = pure nullSubst
 -- Given a function call add(1,2)
 -- add: TyFun Int (TyFun Int Int)
 
-typeConversion :: ExprPA -> Type
-typeConversion _ = TyVoid
+-- typeConversion :: ExprPA -> Type
+-- typeConversion _ = TyVoid
+-- 
+-- fakeCurry :: ExprPA -> TI Type
+-- fakeCurry (FunCall _ n []) = TyFun TyVoid (TyVar "ret") -- nullary
+-- fakeCurry (FunCall _ n (x:[])) = TyFun (typeConversion x) (TyVar "ret") -- unary
+-- fakeCurry (FunCall _ n (x:y:[])) = TyFun (typeConversion x) (TyFun (typeConversion y) (TyVar "ret")) -- binary
+-- fakeCurry (FunCall _ n xs) = (foldl applyFuncs (TyFun (typeConversion $ xs !! 0)) (typeConversion <$> tail xs)) (TyVar "ret") -- n-ary
+--  where
+--   -- partially applied type composition
+--   applyFuncs :: (Type -> Type) -> Type -> (Type -> Type)
+--   applyFuncs partial ty = \x -> partial (TyFun ty x)
 
-fakeCurry :: ExprPA -> TI Type
-fakeCurry (FunCall _ n []) = TyFun TyVoid (TyVar "ret") -- nullary
-fakeCurry (FunCall _ n (x:[])) = TyFun (typeConversion x) (TyVar "ret") -- unary
-fakeCurry (FunCall _ n (x:y:[])) = TyFun (typeConversion x) (TyFun (typeConversion y) (TyVar "ret")) -- binary
-fakeCurry (FunCall _ n xs) = (foldl applyFuncs (TyFun (typeConversion $ xs !! 0)) (typeConversion <$> tail xs)) (TyVar "ret") -- n-ary
- where
-  -- partially applied type composition
-  applyFuncs :: (Type -> Type) -> Type -> (Type -> Type)
-  applyFuncs partial ty = \x -> partial (TyFun ty x)
+tiLit :: Lit -> TI (Subst, Type)
+tiLit (IntLiteral _ _ _) = pure (nullSubst, TyDef "Int32")
+tiLit (StrLiteral _)     = pure (nullSubst, TyDef "String")
+tiLit (CharLiteral _)    = pure (nullSubst, TyDef "Char")
 
 ti :: TypeEnv -> ExprPA -> TI (Subst, Type)
 ti (TypeEnv env) (Identifier _ n) =
@@ -120,9 +125,17 @@ ti (TypeEnv env) (Identifier _ n) =
     Just sigma -> do
       t <- instantiate sigma
       pure (nullSubst, t)
-ti env (FunCall e n a) = do
+ti _ (Literal _ t) = tiLit t
+ti env (FunCall e n (a:[])) = do
   tv <- newTyVar "a"
   (s1, t1) <- ti env (Identifier e n)
-  (s2, t2) <- ti (apply s1 env) (a !! 0)
+  (s2, t2) <- ti (apply s1 env) a
   s3 <- mgu (apply s2 t1) (TyFun t2 tv)
   pure (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
+ti env (FunCall e n (a:b:[])) = do
+  tv <- newTyVar "a"
+  (s1, t1) <- ti env (Identifier e n)    -- x
+  (s2, t2) <- ti (apply s1 env) a        -- x a
+  (s3, t3) <- ti (apply s2 env) b        -- (x a) b
+  s4 <- mgu (apply s3 t1) (TyFun t3 tv)
+  pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
