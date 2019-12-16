@@ -86,32 +86,20 @@ generalize env t = Scheme vars t
   vars = Set.toList $ ftv t `Set.difference` ftv env
 
 mgu :: Type -> Type -> TI Subst
+mgu (TyFun l r) (TyFun l' r') = do
+  s1 <- mgu l l'
+  s2 <- mgu (apply s1 r) (apply s1 r')
+  pure $ s1 `composeSubst` s2
 mgu (TyVar u) t   = varBind u t
 mgu t (TyVar u)   = varBind u t
 mgu TyVoid TyVoid = pure nullSubst
+mgu (TyDef l) (TyDef r) = pure nullSubst -- TODO: overlapping synonyms/deref synonyms
 mgu t1 t2         = throwError $ toS $ "type unification failed " <> show t1 <> " ~ " <> show t2
 
 varBind :: Text -> Type -> TI Subst
 varBind u t | t == TyVar u         = pure nullSubst
             | u `Set.member` ftv t = throwError "occurs check"
             | otherwise            = pure $ Map.singleton u t
-
-
--- Given a function call add(1,2)
--- add: TyFun Int (TyFun Int Int)
-
--- typeConversion :: ExprPA -> Type
--- typeConversion _ = TyVoid
--- 
--- fakeCurry :: ExprPA -> TI Type
--- fakeCurry (FunCall _ n []) = TyFun TyVoid (TyVar "ret") -- nullary
--- fakeCurry (FunCall _ n (x:[])) = TyFun (typeConversion x) (TyVar "ret") -- unary
--- fakeCurry (FunCall _ n (x:y:[])) = TyFun (typeConversion x) (TyFun (typeConversion y) (TyVar "ret")) -- binary
--- fakeCurry (FunCall _ n xs) = (foldl applyFuncs (TyFun (typeConversion $ xs !! 0)) (typeConversion <$> tail xs)) (TyVar "ret") -- n-ary
---  where
---   -- partially applied type composition
---   applyFuncs :: (Type -> Type) -> Type -> (Type -> Type)
---   applyFuncs partial ty = \x -> partial (TyFun ty x)
 
 tiLit :: Lit -> TI (Subst, Type)
 tiLit (IntLiteral _ _ _) = pure (nullSubst, TyDef "Int32")
@@ -134,8 +122,19 @@ ti env (FunCall e n (a:[])) = do
   pure (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
 ti env (FunCall e n (a:b:[])) = do
   tv <- newTyVar "a"
-  (s1, t1) <- ti env (Identifier e n)    -- x
-  (s2, t2) <- ti (apply s1 env) a        -- x a
-  (s3, t3) <- ti (apply s2 env) b        -- (x a) b
-  s4 <- mgu (apply s3 t1) (TyFun t3 tv)
+  (s1, t1) <- ti env (Identifier e n)
+  (s2, t2) <- ti (apply s1 env) a
+  (s3, t3) <- ti (apply s2 env) b
+  s4 <- mgu (apply s3 t1) (TyFun t2 (TyFun t3 tv))
+  pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
+-- (a -> b -> m b) -> b -> [a] -> m [b]
+-- ti env (FunCall e n (h:xs)) = do
+--   tv <- newTyVar "a"
+--   (s1, t1) <- ti env (Identifier e n)
+--   (s2, t2) <- ti (apply s1 env) h
+--   foldl (\f x n -> TyFun x n) (TyFun t2) xs
+
+
+  (s3, t3) <- ti (apply s2 env) b
+  s4 <- mgu (apply s3 t1) (TyFun t2 (TyFun t3 tv))
   pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
