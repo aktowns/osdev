@@ -10,6 +10,7 @@ import qualified Data.Map as Map
 import Control.Monad.Except(ExceptT, MonadError, runExceptT, throwError)
 import Control.Monad.State(StateT, MonadState, runStateT, get, put)
 import Control.Monad.Identity(Identity, runIdentity)
+import Control.Monad (MonadPlus, mzero, mplus, liftM)
 
 data Typed
 
@@ -106,6 +107,19 @@ tiLit (IntLiteral _ _ _) = pure (nullSubst, TyDef "Int32")
 tiLit (StrLiteral _)     = pure (nullSubst, TyDef "String")
 tiLit (CharLiteral _)    = pure (nullSubst, TyDef "Char")
 
+scanM :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m ([a])
+scanM _ z [] = pure $ pure z
+scanM f z (x:xs) = do
+  z' <- f z x
+  liftM (\x' -> pure z ++ x') $ scanM f z' xs
+
+mapAccumM :: (Monad m) => (acc -> x -> m (acc, y)) -> acc -> [x] -> m (acc, [y])
+mapAccumM _ z [] = pure (z, [])
+mapAccumM f z (x:xs) = do
+  (z', y) <- f z x
+  (z'', ys) <- mapAccumM f z' xs
+  pure (z'', pure y ++ ys) 
+
 ti :: TypeEnv -> ExprPA -> TI (Subst, Type)
 ti (TypeEnv env) (Identifier _ n) =
   case Map.lookup n env of
@@ -127,14 +141,10 @@ ti env (FunCall e n (a:b:[])) = do
   (s3, t3) <- ti (apply s2 env) b
   s4 <- mgu (apply s3 t1) (TyFun t2 (TyFun t3 tv))
   pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
--- (a -> b -> m b) -> b -> [a] -> m [b]
--- ti env (FunCall e n (h:xs)) = do
---   tv <- newTyVar "a"
---   (s1, t1) <- ti env (Identifier e n)
---   (s2, t2) <- ti (apply s1 env) h
---   foldl (\f x n -> TyFun x n) (TyFun t2) xs
+ti env (FunCall e n xs) = do
+  tv <- newTyVar "a"
+  (s1, t1) <- ti env (Identifier e n)                                   -- fn
+  args <- scanM (\(sub, _) arg -> ti (apply sub env) arg) (s1, t1) xs   -- infer args
+  s' <- mgu (apply (fst . last args) t1) (foldl (\f (_, t) -> \x -> f $ TyFun t x) (TyFun (fst . head xs)) (tail args)             -- ~
+  
 
-
-  (s3, t3) <- ti (apply s2 env) b
-  s4 <- mgu (apply s3 t1) (TyFun t2 (TyFun t3 tv))
-  pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
