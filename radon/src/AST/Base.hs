@@ -21,7 +21,18 @@ data Type = TyVoid
           | TyInline Type
           | TyConst Type
           | TyEmbedded (Embedded 'EType)
-          deriving (Show, Eq, Ord)
+          deriving (Eq, Ord)
+
+instance Show Type where
+  show TyVoid         = "()"
+  show (TyPtr n)      = "Ptr " <> show n
+  show (TyDef t)      = toS t
+  show (TyVar t)      = toS t
+  show (TyFun a r)    = show a <> " -> " <> show r
+  show (TyStatic n)   = "Static " <> show n
+  show (TyInline n)   = "Inline " <> show n
+  show (TyConst n)    = "Const " <> show n
+  show (TyEmbedded z) = show z
 
 data IntRep  = Dec | Hex | Oct deriving (Show, Eq, Ord)
 data IntType = Unsigned | Long | LongLong deriving (Show, Eq, Ord)

@@ -147,8 +147,18 @@ ti env (FunCall e n xs) = do
   args <- scanM (\(sub, _) arg -> ti (apply sub env) arg) (s1, t1) xs   -- infer args
   case (head args, last args) of
     (Just h, Just l) -> do
-      let cargs = foldl (\f (_, t) -> \x -> f $ TyFun t x) (TyFun (snd h)) (tail args)
+      let cargs = foldl (\f (_, t) x -> f $ TyFun t x) (TyFun (snd h)) (tail args)
       s' <- mgu (apply (fst l) t1) (cargs tv)
-      pure (foldl composeSubst (fst h) (fst <$> tail args), apply s' tv)
+      pure (foldl composeSubst s' (fst <$> reverse args) `composeSubst` s1, apply s' tv)
 
+typeInference :: Map Text Scheme -> ExprPA -> TI Type
+typeInference env e = do
+  (s, t) <- ti (TypeEnv env) e
+  pure (apply s t)
 
+check tree env = 
+  let (Module _ _ b) = tree !! 0 in
+  let (Func _ _ _ _ b') = b !! 0 in
+  let (SExpr _ b'') = b' !! 0 in
+  let (MemberRef _ _ _ b''') = b'' in
+  typeInference env b'''
