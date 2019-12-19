@@ -145,6 +145,10 @@ ti env (FunCall e n xs) = do
   tv <- newTyVar "a"
   (s1, t1) <- ti env (Identifier e n)                                   -- fn
   args <- scanM (\(sub, _) arg -> ti (apply sub env) arg) (s1, t1) xs   -- infer args
-  s' <- mgu (apply (fst . last args) t1) (foldl (\f (_, t) -> \x -> f $ TyFun t x) (TyFun (fst . head xs)) (tail args)             -- ~
-  
+  case (head args, last args) of
+    (Just h, Just l) -> do
+      let cargs = foldl (\f (_, t) -> \x -> f $ TyFun t x) (TyFun (snd h)) (tail args)
+      s' <- mgu (apply (fst l) t1) (cargs tv)
+      pure (foldl composeSubst (fst h) (fst <$> tail args), apply s' tv)
+
 

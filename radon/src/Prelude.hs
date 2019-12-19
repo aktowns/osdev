@@ -1,7 +1,7 @@
 -- | An opinionated prelude mixin
 module Prelude ( module BasePrelude
                , module Exports
-               , tail, head
+               , tail, head, last
                , concatMapM
                , error
                , undefined) where
@@ -43,6 +43,11 @@ head = listToMaybe
 tail :: [a] -> [a]
 {-# INLINE tail #-}
 tail = drop 1
+
+last :: [a] -> Maybe a
+last [x] =  Just x
+last (_:xs) =  last xs
+last [] =  Nothing
 
 concatMapM :: (Monad m) => (a -> m [b]) -> [a] -> m [b]
 {-# INLINE concatMapM #-}
