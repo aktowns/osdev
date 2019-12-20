@@ -10,7 +10,7 @@ import qualified Data.Map as Map
 import Control.Monad.Except(ExceptT, MonadError, runExceptT, throwError)
 import Control.Monad.State(StateT, MonadState, runStateT, get, put)
 import Control.Monad.Identity(Identity, runIdentity)
-import Control.Monad (MonadPlus, mzero, mplus, liftM)
+import Control.Monad (liftM)
 
 data Typed
 
@@ -55,6 +55,11 @@ class Types a where
 instance Types Type where
   ftv TyVoid = Set.empty
 
+  apply s (TyVar n) =
+    case Map.lookup n s of
+      Nothing -> TyVar n
+      Just t  -> t
+  apply s (TyFun t1 t2) = TyFun (apply s t1) (apply s t2)
   apply _ t  = t
 
 instance Types Scheme where
@@ -90,7 +95,7 @@ mgu :: Type -> Type -> TI Subst
 mgu (TyFun l r) (TyFun l' r') = do
   s1 <- mgu l l'
   s2 <- mgu (apply s1 r) (apply s1 r')
-  pure $ s1 `composeSubst` s2
+  pure $ s2 `composeSubst` s1
 mgu (TyVar u) t   = varBind u t
 mgu t (TyVar u)   = varBind u t
 mgu TyVoid TyVoid = pure nullSubst
@@ -140,11 +145,11 @@ ti env (FunCall e n (a:b:[])) = do
   (s2, t2) <- ti (apply s1 env) a
   (s3, t3) <- ti (apply s2 env) b
   s4 <- mgu (apply s3 t1) (TyFun t2 (TyFun t3 tv))
-  pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
+  trace ("inferred: " <> (show $ apply s3 t1) <> " ~ " <> show (TyFun t2 (TyFun t3 tv))) $ pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
 ti env (FunCall e n xs) = do
   tv <- newTyVar "a"
-  (s1, t1) <- ti env (Identifier e n)                                   -- fn
-  args <- scanM (\(sub, _) arg -> ti (apply sub env) arg) (s1, t1) xs   -- infer args
+  (s1, t1) <- ti env (Identifier e n)
+  args <- scanM (\(sub, _) arg -> ti (apply sub env) arg) (s1, t1) xs
   case (head args, last args) of
     (Just h, Just l) -> do
       let cargs = foldl (\f (_, t) x -> f $ TyFun t x) (TyFun (snd h)) (tail args)
@@ -154,7 +159,7 @@ ti env (FunCall e n xs) = do
 typeInference :: Map Text Scheme -> ExprPA -> TI Type
 typeInference env e = do
   (s, t) <- ti (TypeEnv env) e
-  pure (apply s t)
+  pure $ apply s t
 
 check tree env = 
   let (Module _ _ b) = tree !! 0 in
@@ -162,3 +167,16 @@ check tree env =
   let (SExpr _ b'') = b' !! 0 in
   let (MemberRef _ _ _ b''') = b'' in
   typeInference env b'''
+
+testenv :: Map Text Scheme
+testenv = Map.fromList [ ("printf", Scheme [] (TyFun (TyDef "String") $ TyFun (TyDef "String") TyVoid))
+                       , ("puts", Scheme [] (TyFun (TyDef "String") TyVoid))]
+
+testfcall2 :: ExprPA
+testfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (StrLiteral "World")]
+
+testfcall1 :: ExprPA
+testfcall1 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "puts" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello World!\n")]
+
+testbadfcall2 :: ExprPA
+testbadfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (CharLiteral 'W')]
