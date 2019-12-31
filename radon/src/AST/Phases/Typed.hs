@@ -12,6 +12,8 @@ import Control.Monad.State(StateT, MonadState, runStateT, get, put)
 import Control.Monad.Identity(Identity, runIdentity)
 import Control.Monad (liftM)
 
+import Debug.Trace (trace)
+
 data Typed
 
 type ToplTC = TopLevel Typed
@@ -91,16 +93,20 @@ generalize env t = Scheme vars t
  where
   vars = Set.toList $ ftv t `Set.difference` ftv env
 
+-- most general unifier
 mgu :: Type -> Type -> TI Subst
-mgu (TyFun l r) (TyFun l' r') = do
-  s1 <- mgu l l'
-  s2 <- mgu (apply s1 r) (apply s1 r')
-  pure $ s2 `composeSubst` s1
-mgu (TyVar u) t   = varBind u t
-mgu t (TyVar u)   = varBind u t
-mgu TyVoid TyVoid = pure nullSubst
-mgu (TyDef l) (TyDef r) = pure nullSubst -- TODO: overlapping synonyms/deref synonyms
-mgu t1 t2         = throwError $ toS $ "type unification failed " <> show t1 <> " ~ " <> show t2
+mgu l r = {-trace ("comparing l '" <> show l <> "' and r '" <> show r <> "'")-} mgu' l r
+ where
+  mgu' (TyFun l r) (TyFun l' r') = do
+    s1 <- mgu l l'
+    s2 <- mgu (apply s1 r) (apply s1 r')
+    pure $ s2 `composeSubst` s1
+  mgu' (TyVar u) t   = varBind u t
+  mgu' t (TyVar u)   = varBind u t
+  mgu' TyVoid TyVoid = pure nullSubst
+  mgu' (TyDef l) (TyDef r)
+    | l == r = pure nullSubst -- TODO: overlapping synonyms/deref synonyms
+  mgu' t1 t2         = throwError $ toS $ "type unification failed " <> show t1 <> " ~ " <> show t2
 
 varBind :: Text -> Type -> TI Subst
 varBind u t | t == TyVar u         = pure nullSubst
@@ -133,28 +139,15 @@ ti (TypeEnv env) (Identifier _ n) =
       t <- instantiate sigma
       pure (nullSubst, t)
 ti _ (Literal _ t) = tiLit t
-ti env (FunCall e n (a:[])) = do
-  tv <- newTyVar "a"
-  (s1, t1) <- ti env (Identifier e n)
-  (s2, t2) <- ti (apply s1 env) a
-  s3 <- mgu (apply s2 t1) (TyFun t2 tv)
-  pure (s3 `composeSubst` s2 `composeSubst` s1, apply s3 tv)
-ti env (FunCall e n (a:b:[])) = do
-  tv <- newTyVar "a"
-  (s1, t1) <- ti env (Identifier e n)
-  (s2, t2) <- ti (apply s1 env) a
-  (s3, t3) <- ti (apply s2 env) b
-  s4 <- mgu (apply s3 t1) (TyFun t2 (TyFun t3 tv))
-  trace ("inferred: " <> (show $ apply s3 t1) <> " ~ " <> show (TyFun t2 (TyFun t3 tv))) $ pure (s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1, apply s4 tv)
 ti env (FunCall e n xs) = do
   tv <- newTyVar "a"
   (s1, t1) <- ti env (Identifier e n)
   args <- scanM (\(sub, _) arg -> ti (apply sub env) arg) (s1, t1) xs
-  case (head args, last args) of
-    (Just h, Just l) -> do
-      let cargs = foldl (\f (_, t) x -> f $ TyFun t x) (TyFun (snd h)) (tail args)
+  case args of
+    (h:t) | Just th <- head t, Just l <- last t -> do
+      let cargs = foldl (\f (_, t) x -> f $ TyFun t x) (TyFun (snd th)) $ tail t
       s' <- mgu (apply (fst l) t1) (cargs tv)
-      pure (foldl composeSubst s' (fst <$> reverse args) `composeSubst` s1, apply s' tv)
+      pure (foldl composeSubst s' (fst <$> reverse args), apply s' tv)
 
 typeInference :: Map Text Scheme -> ExprPA -> TI Type
 typeInference env e = do
