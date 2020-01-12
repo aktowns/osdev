@@ -27,6 +27,7 @@ library
                      , AST
                      , AST.Phases.Undecorated
                      , AST.Phases.Parsed
+                     , AST.Phases.EnrichedC
                      , AST.Phases.Typed
                      , CodeGen
                      , CodeGen.C.Common
@@ -35,6 +36,7 @@ library
                      , CodeGen.C.Statement
                      , CodeGen.C.TopLevel
                      , CodeGen.C.Type
+                     , Enrich.C
                      , Parser
                      , Parser.Common
                      , Parser.Embedded
