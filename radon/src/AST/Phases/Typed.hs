@@ -153,23 +153,3 @@ typeInference :: Map Text Scheme -> ExprPA -> TI Type
 typeInference env e = do
   (s, t) <- ti (TypeEnv env) e
   pure $ apply s t
-
-check tree env = 
-  let (Module _ _ b) = tree !! 0 in
-  let (Func _ _ _ _ b') = b !! 0 in
-  let (SExpr _ b'') = b' !! 0 in
-  let (MemberRef _ _ _ b''') = b'' in
-  typeInference env b'''
-
-testenv :: Map Text Scheme
-testenv = Map.fromList [ ("printf", Scheme [] (TyFun (TyDef "String") $ TyFun (TyDef "String") TyVoid))
-                       , ("puts", Scheme [] (TyFun (TyDef "String") TyVoid))]
-
-testfcall2 :: ExprPA
-testfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (StrLiteral "World")]
-
-testfcall1 :: ExprPA
-testfcall1 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "puts" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello World!\n")]
-
-testbadfcall2 :: ExprPA
-testbadfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (CharLiteral 'W')]
