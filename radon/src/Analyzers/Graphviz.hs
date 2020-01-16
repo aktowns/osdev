@@ -207,10 +207,10 @@ ppExpr (FunCallUD n a) = do
   j <- freshId
   (links, args) <- unzip <$> mapM ppExpr a
   k <- freshId
+  (l, ide) <- ppExpr n
 
   pure (i, [ nstmt "function call" i
-           , stmt n j
-           , nedge "identifier" i j
+           , nedge "identifier" i l
            , gstmt "args" k
            , nedge "args" i k
            ] ++ (edge k <$> links) ++ concat args)

@@ -105,7 +105,7 @@ pChar = LiteralPA <$> getNS <*> (CharLiteral <$> charLiteral)
 pFuncCall :: Parser ExprPA
 pFuncCall = do
   pos <- getNS
-  name <- identifier
+  name <- pIdentifier
   args <- parens $ pExpr `sepBy` comma
   pure $ FunCallPA pos name args
 

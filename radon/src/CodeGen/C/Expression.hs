@@ -61,7 +61,7 @@ evalExpr (Literal ns (CharLiteral c)) =
   CConst (CCharConst (cChar c) $ toNI ns)
 evalExpr (Binary ns op e1 e2) =
   evalBinary op e1 e2 $ toNI ns
-evalExpr (FunCall ns n a) =
+evalExpr (FunCall ns (Identifier _ n) a) =
   CCall (CVar (mkIdent' n (Name 0)) un) (evalExpr <$> a) $ toNI ns
 evalExpr (Identifier ns n) =
   CVar (mkIdent' n (Name 0)) $ toNI ns
@@ -78,7 +78,7 @@ evalExpr (Cast ns ty e) = CCast (CDecl typ [decs'] un) (evalExpr e) $ toNI ns
   decs' = (Just (CDeclr Nothing decs Nothing [] un), Nothing, Nothing)
 evalExpr (MemberRef ns ModMem (Identifier _ m) (Identifier _ n)) =
   CVar (mkIdent' (m <> "$" <> n) (Name 0)) $ toNI ns
-evalExpr (MemberRef ns ModMem (Identifier _ m) (FunCall _ n a)) =
+evalExpr (MemberRef ns ModMem (Identifier _ m) (FunCall _ (Identifier _ n) a)) =
   CCall (CVar (mkIdent' (m <> "$" <> n) (Name 0)) un) (evalExpr <$> a) $ toNI ns
 evalExpr x =
   error $ "unhandled " ++ show x

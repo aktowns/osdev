@@ -98,7 +98,7 @@ pattern IdentifierUD :: Text -> ExprUD
 pattern IdentifierUD i1 <- Identifier _ i1
   where IdentifierUD i1 = Identifier () i1
 
-pattern FunCallUD :: Text -> [ExprUD] -> ExprUD
+pattern FunCallUD :: ExprUD -> [ExprUD] -> ExprUD
 pattern FunCallUD i1 i2 <- FunCall _ i1 i2
   where FunCallUD i1 i2 = FunCall () i1 i2
 

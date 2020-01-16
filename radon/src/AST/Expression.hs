@@ -63,7 +63,7 @@ data Expression a = Literal !(XLiteral a) Lit
                   | Binary !(XBinary a) BinaryOp (Expression a) (Expression a)
                   | Unary !(XUnary a) Fix UnaryOp (Expression a)
                   | Identifier !(XIdentifier a) Text
-                  | FunCall !(XFunCall a) Text [Expression a]
+                  | FunCall !(XFunCall a) (Expression a) [Expression a]
                   | ArraySub !(XArraySub a) Text (Expression a)
                   | Assign !(XAssign a) (Expression a) (Expression a)
                   | Cast !(XCast a) Type (Expression a)

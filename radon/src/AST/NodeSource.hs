@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      : AST.NodeSource
@@ -14,7 +15,10 @@ module AST.NodeSource where
 data NodeSource = NodeSource { filename :: Text
                              , line     :: Int
                              , column   :: Int
-                             } deriving (Show)
+                             }
+
+instance Show NodeSource where
+  show NodeSource{..} = (toS filename) <> ":" <> (show line) <> ":" <> (show column)
 
 defaultNodeSource :: NodeSource
 defaultNodeSource = NodeSource { filename = "<no file>"

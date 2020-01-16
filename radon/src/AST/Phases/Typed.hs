@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, PatternSynonyms, TypeFamilies, MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, PatternSynonyms, TypeFamilies, MultiParamTypeClasses, RecordWildCards #-}
 module AST.Phases.Typed where
 
 import AST
@@ -22,7 +22,10 @@ type StmtTC = Statement Typed
 
 data TypedSource = TypedSource { nodeSource :: NodeSource
                                , typed      :: Type 
-                               } deriving (Show)
+                               }
+
+instance Show TypedSource where
+  show TypedSource{..} = show nodeSource <> " [" <> show typed <> "]"
 
 --------
 -- Toplevel
@@ -58,7 +61,7 @@ pattern LiteralTC :: TypedSource -> Lit -> ExprTC
 pattern LiteralTC i1 i2 <- Literal i1 i2
   where LiteralTC i1 i2 = Literal i1 i2
 
-pattern FunCallTC :: TypedSource -> Text -> [ExprTC] -> ExprTC
+pattern FunCallTC :: TypedSource -> ExprTC -> [ExprTC] -> ExprTC
 pattern FunCallTC i1 i2 i3 <- FunCall i1 i2 i3
   where FunCallTC i1 i2 i3 = FunCall i1 i2 i3
 
@@ -180,47 +183,57 @@ tyFunArgs (TyFun h t@(TyFun _ _)) = h : tyFunArgs t
 tyFunArgs (TyFun h _)             = [h]
 tyFunArgs x = [x]
 
-typedExpression :: Type -> ExprPA -> ExprTC
-typedExpression ty (IdentifierPA ns n) = IdentifierTC (TypedSource ns ty) n
-typedExpression ty (LiteralPA ns n)    = LiteralTC (TypedSource ns ty) n
-typedExpression ty (FunCallPA ns n xs) = 
-  let args = zip (tyFunArgs ty) xs in 
-    FunCallTC (TypedSource ns ty) n ((\(t, el) -> typedExpression t el) <$> args)
+ts :: Type -> NodeSource -> TypedSource
+ts ty ns = TypedSource ns ty
 
-inferExpression :: TypeEnv -> ExprPA -> TI (Subst, ExprTC)
-inferExpression env el = second (\ty -> typedExpression ty el) <$> inferExpression' env el
- where
-  inferExpression' (TypeEnv env) (IdentifierPA ns n) =
-    case Map.lookup n env of
-      Nothing -> throwError $ "unbound variable: " <> n
-      Just sigma -> do
-        t <- instantiate sigma
-        pure (nullSubst, t)
-  inferExpression' _ (LiteralPA _ t) = tiLit t
-  inferExpression' env el@(FunCall e n xs) = do
-    tv <- newTyVar "a"
-    (s1, t1) <- inferExpression' env (Identifier e n)
-    args <- scanM (\(sub, _) arg -> inferExpression' (apply sub env) arg) (s1, t1) xs
-    case args of
-      (h:t) | Just th <- head t, Just l <- last t -> do
-        let cargs = foldl (\f (_, t) x -> f $ TyFun t x) (TyFun (snd th)) $ tail t
-        s' <- mgu (apply (fst l) t1) (cargs tv)
-        pure (foldl composeSubst s' (fst <$> reverse args), apply s' tv)
+data Ty a = Ty Subst Type a deriving (Show)
 
--- applyExpression :: Map Text Scheme -> ExprPA -> TI ExprTC
--- applyExpression env e = do
---   (s, t) <- inferExpression (TypeEnv env) e
---   pure $ typedExpression (apply s t) e
+sbs :: Ty a -> Subst
+sbs (Ty x _ _) = x
+
+typ :: Ty a -> Type
+typ (Ty _ x _) = x
+
+elm :: Ty a -> a
+elm (Ty _ _ x) = x
+
+inferExpression :: TypeEnv -> ExprPA -> TI (Ty ExprTC) -- (Subst, Type, ExprTC)
+inferExpression (TypeEnv env) el@(IdentifierPA ns n) =
+  case Map.lookup n env of
+    Nothing -> throwError $ "unbound variable: " <> n
+    Just sigma -> do
+      t <- instantiate sigma
+      pure $ Ty nullSubst t (IdentifierTC (ts t ns) n)
+inferExpression _ el@(LiteralPA ns t) = do
+  (s, t') <- tiLit t
+  pure $ Ty s t' (LiteralTC (ts t' ns) t)
+inferExpression env el@(FunCallPA ns n xs) = do
+  tv <- newTyVar "a"
+  (Ty s1 t1 e1) <- inferExpression env n
+  args <- scanM (\(Ty sub _ _) arg -> inferExpression (apply sub env) arg) (Ty s1 t1 e1) xs
+  case args of
+    (h:t) | Just th <- head t, Just l <- last t -> do
+      let cargs = foldl (\f (Ty _ t _) x -> f $ TyFun t x) (TyFun (typ th)) $ tail t
+      s' <- mgu (apply (sbs l) t1) (cargs tv)
+      let t' = apply s' tv
+      let e = FunCallTC (ts t' ns) e1 (elm <$> tail args)
+      pure $ Ty (foldl composeSubst s' (sbs <$> reverse args)) t' e
+
+applyExpression :: Map Text Scheme -> ExprPA -> TI ExprTC
+applyExpression env e = do
+  (Ty _ _ e') <- inferExpression (TypeEnv env) e
+  pure e'
+  --pure $ typedExpression (apply s t) e
 
 testenv :: Map Text Scheme
 testenv = Map.fromList [ ("printf", Scheme [] (TyFun (TyDef "String") $ TyFun (TyDef "String") TyVoid))
                        , ("puts", Scheme [] (TyFun (TyDef "String") TyVoid))]
 
 testfcall2 :: ExprPA
-testfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (StrLiteral "World")]
+testfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) (Identifier (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf") [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (StrLiteral "World")]
 
 testfcall1 :: ExprPA
-testfcall1 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "puts" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello World!\n")]
+testfcall1 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) (Identifier (NodeSource {filename = "example.ra", line = 2, column = 39}) "puts") [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello World!\n")]
 
 testbadfcall2 :: ExprPA
-testbadfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf" [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (CharLiteral 'W')]
+testbadfcall2 = FunCall (NodeSource {filename = "example.ra", line = 2, column = 39}) (Identifier (NodeSource {filename = "example.ra", line = 2, column = 39}) "printf") [Literal (NodeSource {filename = "example.ra", line = 2, column = 46}) (StrLiteral "Hello %s!\n"),Literal (NodeSource {filename = "example.ra", line = 2, column = 61}) (CharLiteral 'W')]

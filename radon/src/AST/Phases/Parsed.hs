@@ -110,7 +110,7 @@ pattern IdentifierPA :: NodeSource -> Text -> ExprPA
 pattern IdentifierPA i1 i2 <- Identifier i1 i2
   where IdentifierPA i1 i2 = Identifier i1 i2
 
-pattern FunCallPA :: NodeSource -> Text -> [ExprPA] -> ExprPA
+pattern FunCallPA :: NodeSource -> ExprPA -> [ExprPA] -> ExprPA
 pattern FunCallPA i1 i2 i3 <- FunCall i1 i2 i3
   where FunCallPA i1 i2 i3 = FunCall i1 i2 i3
 
@@ -135,7 +135,7 @@ instance ToUndecorated Expression Parsed where
   toUndecorated (BinaryPA _ a1 a2 a3)    = BinaryUD a1 (toUndecorated a2) (toUndecorated a3)
   toUndecorated (UnaryPA _ a1 a2 a3)     = UnaryUD a1 a2 (toUndecorated a3)
   toUndecorated (IdentifierPA _ a1)      = IdentifierUD a1
-  toUndecorated (FunCallPA _ a1 a2)      = FunCallUD a1 (toUndecorated <$> a2)
+  toUndecorated (FunCallPA _ a1 a2)      = FunCallUD (toUndecorated a1) (toUndecorated <$> a2)
   toUndecorated (ArraySubPA _ a1 a2)     = ArraySubUD a1 (toUndecorated a2)
   toUndecorated (AssignPA _ a1 a2)       = AssignUD (toUndecorated a1) (toUndecorated a2)
   toUndecorated (CastPA _ a1 a2)         = CastUD a1 (toUndecorated a2)
