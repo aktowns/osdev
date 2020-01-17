@@ -44,26 +44,50 @@ type instance XImport  Typed = NodeSource
 -- Expression
 
 type instance XLiteral    Typed = TypedSource
-type instance XBinary     Typed = NodeSource
-type instance XUnary      Typed = NodeSource
+type instance XBinary     Typed = TypedSource
+type instance XUnary      Typed = TypedSource
 type instance XIdentifier Typed = TypedSource
 type instance XFunCall    Typed = TypedSource
-type instance XArraySub   Typed = NodeSource
-type instance XAssign     Typed = NodeSource
-type instance XCast       Typed = NodeSource
-type instance XMemberRef  Typed = NodeSource
-
-pattern IdentifierTC :: TypedSource -> Text -> ExprTC
-pattern IdentifierTC i1 i2 <- Identifier i1 i2
-  where IdentifierTC i1 i2 = Identifier i1 i2
+type instance XArraySub   Typed = TypedSource
+type instance XAssign     Typed = TypedSource
+type instance XCast       Typed = TypedSource
+type instance XMemberRef  Typed = TypedSource
 
 pattern LiteralTC :: TypedSource -> Lit -> ExprTC
 pattern LiteralTC i1 i2 <- Literal i1 i2
   where LiteralTC i1 i2 = Literal i1 i2
 
+pattern BinaryTC :: TypedSource -> BinaryOp -> ExprTC -> ExprTC -> ExprTC
+pattern BinaryTC i1 i2 i3 i4 <- Binary i1 i2 i3 i4
+  where BinaryTC i1 i2 i3 i4 = Binary i1 i2 i3 i4
+
+pattern UnaryTC :: TypedSource -> Fix -> UnaryOp -> ExprTC -> ExprTC
+pattern UnaryTC i1 i2 i3 i4 <- Unary i1 i2 i3 i4
+  where UnaryTC i1 i2 i3 i4 = Unary i1 i2 i3 i4
+
+pattern IdentifierTC :: TypedSource -> Text -> ExprTC
+pattern IdentifierTC i1 i2 <- Identifier i1 i2
+  where IdentifierTC i1 i2 = Identifier i1 i2
+
 pattern FunCallTC :: TypedSource -> ExprTC -> [ExprTC] -> ExprTC
 pattern FunCallTC i1 i2 i3 <- FunCall i1 i2 i3
   where FunCallTC i1 i2 i3 = FunCall i1 i2 i3
+
+pattern ArraySubTC :: TypedSource -> Text -> ExprTC -> ExprTC
+pattern ArraySubTC i1 i2 i3 <- ArraySub i1 i2 i3
+  where ArraySubTC i1 i2 i3 = ArraySub i1 i2 i3
+
+pattern AssignTC :: TypedSource -> ExprTC -> ExprTC -> ExprTC
+pattern AssignTC i1 i2 i3 <- Assign i1 i2 i3
+  where AssignTC i1 i2 i3 = Assign i1 i2 i3
+
+pattern CastTC :: TypedSource -> Type -> ExprTC -> ExprTC
+pattern CastTC i1 i2 i3 <- Cast i1 i2 i3
+  where CastTC i1 i2 i3 = Cast i1 i2 i3
+
+pattern MemberRefTC :: TypedSource -> MemberType -> ExprTC -> ExprTC -> ExprTC
+pattern MemberRefTC i1 i2 i3 i4 <- MemberRef i1 i2 i3 i4
+  where MemberRefTC i1 i2 i3 i4 = MemberRef i1 i2 i3 i4
 
 ---------
 
@@ -197,6 +221,12 @@ typ (Ty _ x _) = x
 elm :: Ty a -> a
 elm (Ty _ _ x) = x
 
+unaryOpMethod :: NodeSource -> UnaryOp -> ExprPA  -- TODO: UnaryOp should carry ns
+unaryOpMethod ns Negate = IdentifierPA ns "op_negate"
+
+binaryOpMethod :: NodeSource -> BinaryOp -> ExprPA -- TODO: BinaryOp should carry ns
+binaryOpMethod ns Add = IdentifierPA ns "op_add"
+
 inferExpression :: TypeEnv -> ExprPA -> TI (Ty ExprTC) -- (Subst, Type, ExprTC)
 inferExpression (TypeEnv env) el@(IdentifierPA ns n) =
   case Map.lookup n env of
@@ -207,6 +237,19 @@ inferExpression (TypeEnv env) el@(IdentifierPA ns n) =
 inferExpression _ el@(LiteralPA ns t) = do
   (s, t') <- tiLit t
   pure $ Ty s t' (LiteralTC (ts t' ns) t)
+inferExpression env el@(CastPA ns ty e) = do
+  (Ty s1 t1 e1) <- inferExpression env e
+  s' <- mgu (apply s1 t1) (apply s1 ty)
+  pure $ Ty s' ty (CastTC (ts ty ns) ty e1)
+inferExpression env el@(AssignPA ns e1 e2) = do
+  (Ty s1 t1 e1') <- inferExpression env e1
+  (Ty s2 t2 e2') <- inferExpression env e2
+  s' <- mgu (apply s1 t1) (apply s2 t2)
+  pure $ Ty s' t2 (AssignTC (ts (apply s2 t2) ns) e1' e2')
+inferExpression env el@(UnaryPA ns fix op e) = do -- !a -> (!) a
+  inferExpression env $ FunCallPA ns (unaryOpMethod ns op) [e]
+inferExpression env el@(BinaryPA ns op e1 e2) = do -- 1 + 1 -> (+) 1 1
+  inferExpression env $ FunCallPA ns (binaryOpMethod ns op) [e1, e2]
 inferExpression env el@(FunCallPA ns n xs) = do
   tv <- newTyVar "a"
   (Ty s1 t1 e1) <- inferExpression env n
