@@ -310,3 +310,5 @@ getNS = do
   pos <- getSourcePos
   pure $ NodeSource (toS $ sourceName pos) (unPos $ sourceLine pos) (unPos $ sourceColumn pos)
 
+showParser :: (Show a) => (Parser a) -> Parser Text
+showParser p = toS . show <$> p

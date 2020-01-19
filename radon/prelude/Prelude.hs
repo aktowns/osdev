@@ -27,6 +27,7 @@ import Data.Maybe as Exports
 import Data.Foldable as Exports
 import Data.Traversable as Exports
 import Data.Bifunctor as Exports
+import Data.Bifoldable as Exports
 
 import Data.String.Conv as Exports (toS)
 
