@@ -8,7 +8,7 @@
 -- Portability : portable
 --
 -----------------------------------------------------------------------------
-module Parser(parseFile) where
+module Parser(parseFile, parseText) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -16,15 +16,17 @@ import Text.Megaparsec hiding (some, many)
 
 import AST.Phases.Parsed (ToplPA)
 
+import Parser.Common (Parser)
 import Parser.TopLevel (pTopLevel)
 
-parseText :: Text -> Text -> [ToplPA]
-parseText name txt =
-  case parse (pTopLevel <* eof) (T.unpack name) txt of
-    Left err -> error $ errorBundlePretty err
-    Right x -> x
+parseText :: Parser a -> Text -> Text -> Either Text a
+parseText p name txt = first (toS . errorBundlePretty) parsed
+ where parsed = parse (p <* eof) (T.unpack name) txt
 
-parseFile :: FilePath -> IO [ToplPA]
+parseAllText :: Text -> Text -> Either Text [ToplPA]
+parseAllText = parseText pTopLevel
+
+parseFile :: FilePath -> IO (Either Text [ToplPA])
 parseFile fp = do
   out <- T.readFile fp
-  pure $ parseText (T.pack fp) out
+  pure $ parseAllText (T.pack fp) out
