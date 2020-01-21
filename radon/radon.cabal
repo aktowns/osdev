@@ -44,6 +44,7 @@ library
                      , Parser.Type
                      , Rewriters.C.FunctionAlias
                      , Rewriters.Rewriter
+                     , TypeCheck
   build-depends:       base >=4.13 && <4.15
                      , megaparsec
                      , language-c
@@ -100,6 +101,7 @@ executable rdi
                      , optparse-applicative
                      , haskeline
                      , prelude
+                     , pretty-simple
   mixins:              base (Prelude as BasePrelude)
                      , base hiding (Prelude)
   hs-source-dirs:      app

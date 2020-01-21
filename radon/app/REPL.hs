@@ -7,14 +7,18 @@ import Options.Applicative
 import System.Console.Haskeline
 
 import Control.Monad(when)
+import Text.Pretty.Simple
 
 import Text.PrettyPrint (render)
 import Parser
 import qualified Parser.Common as PC
 import Parser.TopLevel (pTopLevel)
 import Parser.Statement (pStmt)
+import Parser.Expression (pExpr)
 import CodeGen.C.Pretty
 import CodeGen.C.TopLevel
+
+import TypeCheck
 
 import AST.Phases.Undecorated
 
@@ -54,13 +58,34 @@ analyzers = [graph]
 --   let ctree = evalTopLevels tree
 --   return $ render $ pretty $ prependC ctree preamb
 
+
 evalShowable :: [PC.Parser Text] -> Text -> Text
 evalShowable [] _       = "no parsers given.."
 evalShowable (x:[]) inp = bifold $ parseText x "<input>" inp
 evalShowable (x:xs) inp = bifoldMap (\_ -> evalShowable xs inp) id $ parseText x "<input>" inp
 
+evalStatement :: Text -> Text
+evalStatement inp = 
+  case parseText pStmt "<input>" inp of
+    Left err -> "Syntax error: " <> err
+    Right x  -> 
+      case typeCheckStatement x of
+        Left err -> "Type error: " <> err
+        Right x -> toS $ pShow x
+
+evalTL :: Text -> Text
+evalTL inp = 
+  case parseText pTopLevel "<input>" inp of
+    Left err -> evalStatement inp -- "Syntax error: " <> err
+    Right x  -> 
+      case traverse typeCheckTopLevel x of
+        Left err -> "Type error: " <> err
+        Right x -> toS $ pShow x
+
 program :: Options -> IO ()
-program Options{..} = runInputT defaultSettings loop
+program Options{..} = do
+  putStrLn "Radon REPL 0.000000001 \"Rounding Error\""
+  runInputT defaultSettings loop
  where
   loop :: InputT IO ()
   loop = do
@@ -70,7 +95,8 @@ program Options{..} = runInputT defaultSettings loop
       Just "quit" -> pure ()
       Just "" -> loop
       Just input -> do
-        outputStrLn (toS $ evalShowable [PC.showParser pTopLevel, PC.showParser pStmt] $ toS input)
+        outputStrLn (toS $ evalTL $ toS input)
+        -- outputStrLn (toS $ evalShowable [PC.showParser pTopLevel, PC.showParser pStmt] $ toS input)
         loop
 
 options :: Parser Options
