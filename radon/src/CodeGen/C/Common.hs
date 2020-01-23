@@ -25,5 +25,11 @@ un = undefNode
 mkIdent' :: Text -> Name -> Ident
 mkIdent' x = mkIdent nopos (toS x)
 
-toNI :: NodeSource -> NodeInfo
-toNI NodeSource{..} = mkNodeInfoOnlyPos (position 0 (toS filename) line column Nothing)
+class ToNI a where
+  toNI :: a -> NodeInfo
+
+instance ToNI NodeSource where
+  toNI NodeSource{..} = mkNodeInfoOnlyPos (position 0 (toS filename) line column Nothing)
+
+instance ToNI TypedSource where
+  toNI TypedSource{nodeSource} = toNI nodeSource

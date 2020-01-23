@@ -16,7 +16,17 @@ description:
 
   A toy compile to C language that xenon is implemented in.
 
+common common-base
+  build-depends:       base >=4.13 && <4.15
+  ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
+                       -Wpartial-fields -Widentities -Wredundant-constraints
+                       -Wmonomorphism-restriction -Wmissing-local-signatures
+  default-language:    Haskell2010
+  default-extensions:  OverloadedStrings
+                       NamedFieldPuns
+
 library
+  import:              common-base
   exposed-modules:     Analyzers.Analyzer
                      , Analyzers.Graphviz
                      , AST.Base
@@ -45,8 +55,7 @@ library
                      , Rewriters.C.FunctionAlias
                      , Rewriters.Rewriter
                      , TypeCheck
-  build-depends:       base >=4.13 && <4.15
-                     , megaparsec
+  build-depends:       megaparsec
                      , language-c
                      , pretty-simple
                      , bifunctors
@@ -63,40 +72,32 @@ library
   mixins:              base (Prelude as BasePrelude)
                      , base hiding (Prelude)
   hs-source-dirs:      src
-  ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Widentities -Wredundant-constraints -Wmonomorphism-restriction -Wmissing-local-signatures
-  default-language:    Haskell2010
-  default-extensions:  OverloadedStrings
 
 library prelude
+  import:              common-base
   exposed-modules:     Prelude
-  build-depends:       base >=4.13 && <4.15
-                     , bifunctors
+  build-depends:       bifunctors
                      , text
                      , containers
                      , string-conv
   mixins:              base (Prelude as BasePrelude)
                      , base hiding (Prelude)
   hs-source-dirs:      prelude
-  ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Widentities -Wredundant-constraints -Wmonomorphism-restriction -Wmissing-local-signatures
-  default-language:    Haskell2010
-  default-extensions:  OverloadedStrings
 
 
 executable rdc
+  import:              common-base
   main-is:             Compiler.hs
-  build-depends:       base >=4.13 && <4.15
-                     , radon
+  build-depends:       radon
                      , pretty
                      , optparse-applicative
                      , string-conv
   hs-source-dirs:      app
-  default-language:    Haskell2010
-  ghc-options:         -Wall -O2 -threaded
 
 executable rdi
+  import:              common-base
   main-is:             REPL.hs
-  build-depends:       base >=4.13 && <4.15
-                     , radon
+  build-depends:       radon
                      , pretty
                      , optparse-applicative
                      , haskeline
@@ -105,8 +106,6 @@ executable rdi
   mixins:              base (Prelude as BasePrelude)
                      , base hiding (Prelude)
   hs-source-dirs:      app
-  default-language:    Haskell2010
-  ghc-options:         -Wall -O2 -threaded
 
 test-suite test-radon
   type:                exitcode-stdio-1.0

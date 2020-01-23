@@ -1,0 +1,5 @@
+:set -fwarn-unused-binds -fwarn-unused-imports
+:set -isrc
+:set -XOverloadedStrings
+:set -XRecordWildcards
+:set -XNamedFieldPuns

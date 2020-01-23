@@ -98,28 +98,31 @@ ppStmt (ReturnUD Nothing) = do
   i <- freshId
 
   pure (i, [ nstmt "return" i ])
-ppStmt (DeclareUD n t Nothing) = do
+ppStmt (DeclareUD n Nothing Nothing) = do
   i <- freshId
   j <- freshId
-  (k, ty) <- ppType t
+  -- (k, ty) <- ppType t
 
   pure (i, [ nstmt "declare" i
            , stmt n j
            , nedge "identifier" i j
-           , nedge "type" i k
-           ] ++ ty)
+           --, nedge "type" i k
+           ]) -- ++ ty)
 ppStmt (DeclareUD n t (Just e)) = do
   i <- freshId
   j <- freshId
-  (k, ty) <- ppType t
+  -- typ <- traverse ppType t -- TODO: Show types if exist
+  -- let (k', ty) = case typ of
+  --   Just (k, ty) -> (nedge "type" i k, ty)
+  --   Nothing -> (, [])
+
   (l, ex) <- ppExpr e
 
   pure (i, [ nstmt "declare" i
            , stmt n j
            , nedge "identifier" i j
-           , nedge "type" i k
            , nedge "expr" i l
-           ] ++ ty ++ ex)
+           ] ++ ex)
 ppStmt (WhileUD e s) = do
   i <- freshId
   (j, ex) <- ppExpr e

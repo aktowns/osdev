@@ -128,7 +128,7 @@ type instance XFor     Undecorated = ()
 type instance XIf      Undecorated = ()
 type instance XSExpr   Undecorated = ()
 
-pattern DeclareUD :: Text -> Type -> Maybe ExprUD -> StmtUD
+pattern DeclareUD :: Text -> Maybe Type -> Maybe ExprUD -> StmtUD
 pattern DeclareUD i1 i2 i3 <- Declare _ i1 i2 i3
   where DeclareUD i1 i2 i3 = Declare () i1 i2 i3
 

@@ -12,6 +12,8 @@
 -----------------------------------------------------------------------------
 module AST.NodeSource where
 
+import AST.Base
+
 data NodeSource = NodeSource { filename :: Text
                              , line     :: Int
                              , column   :: Int
@@ -26,3 +28,9 @@ defaultNodeSource = NodeSource { filename = "<no file>"
                                , column = 0
                                }
 
+data TypedSource = TypedSource { nodeSource :: NodeSource
+                               , typed      :: Type
+                               }
+
+instance Show TypedSource where
+  show TypedSource{..} = show nodeSource <> " [" <> show typed <> "]"

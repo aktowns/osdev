@@ -151,7 +151,7 @@ type instance XFor     Parsed = NodeSource
 type instance XIf      Parsed = NodeSource
 type instance XSExpr   Parsed = NodeSource
 
-pattern DeclarePA :: NodeSource -> Text -> Type -> Maybe ExprPA -> StmtPA
+pattern DeclarePA :: NodeSource -> Text -> Maybe Type -> Maybe ExprPA -> StmtPA
 pattern DeclarePA i1 i2 i3 i4 <- Declare i1 i2 i3 i4
   where DeclarePA i1 i2 i3 i4 = Declare i1 i2 i3 i4
 

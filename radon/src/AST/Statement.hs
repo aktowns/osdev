@@ -26,7 +26,7 @@ type family XFor x
 type family XIf x
 type family XSExpr x
 
-data Statement a = Declare !(XDeclare a) Text Type (Maybe (Expression a))
+data Statement a = Declare !(XDeclare a) Text (Maybe Type) (Maybe (Expression a))
                  | Return !(XReturn a) (Maybe (Expression a))
                  | While !(XWhile a) (Expression a) [Statement a]
                  | For !(XFor a) (Statement a) (Expression a) (Expression a) [Statement a]

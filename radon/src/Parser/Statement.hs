@@ -39,7 +39,7 @@ pDeclare = do
   _ <- kVal
   name <- identifier
   _ <- colon
-  typ <- pType
+  typ <- optional pType
   value <- optional (equals *> pExpr)
   pure (DeclarePA pos name (foldr ($) typ quals) value) <?> "val"
 

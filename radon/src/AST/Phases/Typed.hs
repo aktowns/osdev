@@ -10,12 +10,6 @@ type ToplTC = TopLevel Typed
 type ExprTC = Expression Typed
 type StmtTC = Statement Typed
 
-data TypedSource = TypedSource { nodeSource :: NodeSource
-                               , typed      :: Type
-                               }
-
-instance Show TypedSource where
-  show TypedSource{..} = show nodeSource <> " [" <> show typed <> "]"
 
 --------
 -- Toplevel
@@ -125,7 +119,7 @@ type instance XFor     Typed = NodeSource
 type instance XIf      Typed = NodeSource
 type instance XSExpr   Typed = NodeSource
 
-pattern DeclareTC :: NodeSource -> Text -> Type -> Maybe ExprTC -> StmtTC
+pattern DeclareTC :: NodeSource -> Text -> Maybe Type -> Maybe ExprTC -> StmtTC
 pattern DeclareTC i1 i2 i3 i4 <- Declare i1 i2 i3 i4
   where DeclareTC i1 i2 i3 i4 = Declare i1 i2 i3 i4
 

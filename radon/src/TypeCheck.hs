@@ -9,8 +9,6 @@ import Control.Monad (liftM)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import Debug.Trace (trace)
-
 import AST
 import AST.Phases.Parsed
 import AST.Phases.Typed
@@ -92,7 +90,7 @@ generalize env t = Scheme vars t
 
 -- most general unifier
 mgu :: Type -> Type -> TI Subst
-mgu l r = {-trace ("comparing l '" <> show l <> "' and r '" <> show r <> "'")-} mgu' l r
+mgu = {-trace ("comparing l '" <> show l <> "' and r '" <> show r <> "'")-} mgu'
  where
   mgu' (TyFun l r) (TyFun l' r') = do
     s1 <- mgu l l'
@@ -148,35 +146,54 @@ elm :: Ty a -> a
 elm (Ty _ _ x) = x
 
 unaryOpMethod :: NodeSource -> UnaryOp -> ExprPA  -- TODO: UnaryOp should carry ns
-unaryOpMethod ns Negate = IdentifierPA ns "op_negate"
+unaryOpMethod ns Negate    = IdentifierPA ns "op_negate"
+unaryOpMethod ns Positive  = IdentifierPA ns "op_positive"
+unaryOpMethod ns Increment = IdentifierPA ns "op_increment"
+unaryOpMethod ns Decrement = IdentifierPA ns "op_decrement"
 
 binaryOpMethod :: NodeSource -> BinaryOp -> ExprPA -- TODO: BinaryOp should carry ns
-binaryOpMethod ns Add = IdentifierPA ns "op_add"
+binaryOpMethod ns Add              = IdentifierPA ns "op_add"
+binaryOpMethod ns Sub              = IdentifierPA ns "op_sub"
+binaryOpMethod ns Mul              = IdentifierPA ns "op_mul"
+binaryOpMethod ns Div              = IdentifierPA ns "op_div"
+binaryOpMethod ns ShiftLeft        = IdentifierPA ns "op_shift_left"
+binaryOpMethod ns ShiftRight       = IdentifierPA ns "op_shift_right"
+binaryOpMethod ns LessThan         = IdentifierPA ns "op_less_than"
+binaryOpMethod ns LessThanEqual    = IdentifierPA ns "op_less_than_equal"
+binaryOpMethod ns GreaterThan      = IdentifierPA ns "op_greater_than"
+binaryOpMethod ns GreaterThanEqual = IdentifierPA ns "op_greater_than_equal"
+binaryOpMethod ns Equals           = IdentifierPA ns "op_equals"
+binaryOpMethod ns NotEquals        = IdentifierPA ns "op_not_equals"
+binaryOpMethod ns BitwiseAnd       = IdentifierPA ns "op_bitwise_and"
+binaryOpMethod ns BitwiseXor       = IdentifierPA ns "op_bitwise_xor"
+binaryOpMethod ns BitwiseOr        = IdentifierPA ns "op_bitwise_or"
+binaryOpMethod ns LogicalAnd       = IdentifierPA ns "op_logical_and"
+binaryOpMethod ns LogicalOr        = IdentifierPA ns "op_logical_or"
 
 inferExpression :: TypeEnv -> ExprPA -> TI (Ty ExprTC) -- (Subst, Type, ExprTC)
-inferExpression (TypeEnv env) el@(IdentifierPA ns n) =
+inferExpression (TypeEnv env) (IdentifierPA ns n) =
   case Map.lookup n env of
     Nothing -> throwError $ "unbound variable: " <> n
     Just sigma -> do
       t <- instantiate sigma
       pure $ Ty nullSubst t (IdentifierTC (ts t ns) n)
-inferExpression _ el@(LiteralPA ns t) = do
+inferExpression _ (LiteralPA ns t) = do
   (s, t') <- tiLit t
   pure $ Ty s t' (LiteralTC (ts t' ns) t)
-inferExpression env el@(CastPA ns ty e) = do
+inferExpression env (CastPA ns ty e) = do
   (Ty s1 t1 e1) <- inferExpression env e
   s' <- mgu (apply s1 t1) (apply s1 ty)
   pure $ Ty s' ty (CastTC (ts ty ns) ty e1)
-inferExpression env el@(AssignPA ns e1 e2) = do
+inferExpression env (AssignPA ns e1 e2) = do
   (Ty s1 t1 e1') <- inferExpression env e1
   (Ty s2 t2 e2') <- inferExpression env e2
   s' <- mgu (apply s1 t1) (apply s2 t2)
   pure $ Ty s' t2 (AssignTC (ts (apply s2 t2) ns) e1' e2')
-inferExpression env el@(UnaryPA ns fix op e) = do -- !a -> (!) a
+inferExpression env (UnaryPA ns _ op e) = do -- !a -> (!) a
   inferExpression env $ FunCallPA ns (unaryOpMethod ns op) [e]
-inferExpression env el@(BinaryPA ns op e1 e2) = do -- 1 + 1 -> (+) 1 1
+inferExpression env (BinaryPA ns op e1 e2) = do -- 1 + 1 -> (+) 1 1
   inferExpression env $ FunCallPA ns (binaryOpMethod ns op) [e1, e2]
-inferExpression env el@(FunCallPA ns n xs) = do
+inferExpression env (FunCallPA ns n xs) = do
   tv <- newTyVar "a"
   (Ty s1 t1 e1) <- inferExpression env n
   args <- scanM (\(Ty sub _ _) arg -> inferExpression (apply sub env) arg) (Ty s1 t1 e1) xs
@@ -187,12 +204,16 @@ inferExpression env el@(FunCallPA ns n xs) = do
       let t' = apply s' tv
       let e = FunCallTC (ts t' ns) e1 (elm <$> tail args)
       pure $ Ty (foldl composeSubst s' (sbs <$> reverse args)) t' e
+inferExpression _ el = error $ "Unhandled: " <> show el
 
 inferStatement :: TypeEnv -> StmtPA -> TI (Ty StmtTC)
-inferStatement env (DeclarePA ns name ty expr) = do
+inferStatement env (DeclarePA ns name ty'@(Just ty) expr) = do
   mexpr <- traverse (inferExpression env) expr
   msubst <- traverse (mgu ty) (typ <$> mexpr)
-  pure $ Ty (fromMaybe nullSubst msubst) TyVoid (DeclareTC ns name ty (elm <$> mexpr))
+  pure $ Ty (fromMaybe nullSubst msubst) TyVoid (DeclareTC ns name ty' (elm <$> mexpr))
+inferStatement env (DeclarePA ns name Nothing expr) = do
+  mexpr <- traverse (inferExpression env) expr
+  pure $ Ty (fromMaybe nullSubst msubst) TyVoid (DeclareTC ns name Nothing (elm <$> mexpr))
 inferStatement env (ReturnPA ns expr) = do
   mexpr <- traverse (inferExpression env) expr
   pure $ Ty nullSubst TyVoid (ReturnTC ns (elm <$> mexpr))
@@ -218,6 +239,7 @@ inferStatement env (IfPA ns te tb obs els) = do
 inferStatement env (SExprPA ns expr) = do
   expr' <- inferExpression env expr
   pure $ Ty nullSubst TyVoid (SExprTC ns (elm expr'))
+inferStatement _ el = error $ "Unhandled: " <> show el
 
 inferTopLevel :: TypeEnv -> ToplPA -> TI (Ty ToplTC)
 inferTopLevel env (EnumPA ns name fields) = pure $ Ty nullSubst TyVoid (EnumTC ns name fields)
@@ -235,6 +257,7 @@ inferTopLevel env (ModulePA ns name body) = do
 inferTopLevel env (TypeDefPA ns name ty) = pure $ Ty nullSubst TyVoid (TypeDefTC ns name ty)
 inferTopLevel env (AliasPA ns lang s t) = pure $ Ty nullSubst TyVoid (AliasTC ns lang s t)
 inferTopLevel env (ImportPA ns lang n) = pure $ Ty nullSubst TyVoid (ImportTC ns lang n)
+inferTopLevel _ el = error $ "Unhandled: " <> show el
 
 applyExpression :: Map Text Scheme -> ExprPA -> TI ExprTC
 applyExpression env e = do

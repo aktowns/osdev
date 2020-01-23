@@ -19,14 +19,14 @@ import Language.C.Syntax.Constants
 import Language.C.Data.Node (NodeInfo)
 
 import AST
-import AST.Phases.Parsed
+import AST.Phases.Typed
 
 import CodeGen.C.Common
 import CodeGen.C.Expression
 import CodeGen.C.Statement
 import CodeGen.C.Type
 
-initExpr :: Maybe ExprPA -> Maybe CInit
+initExpr :: Maybe ExprTC -> Maybe CInit
 initExpr v = v <&> \e -> CInitExpr (evalExpr e) un
 
 evalArgs :: [(Text, Type)] -> [CDecl]
@@ -59,7 +59,7 @@ prefix :: (Semigroup a, IsString a) => Maybe a -> a -> a
 prefix (Just x) y = x <> "$" <> y
 prefix _ y = y
 
-evalTopLevel :: Maybe Text -> ToplPA -> [CExtDecl]
+evalTopLevel :: Maybe Text -> ToplTC -> [CExtDecl]
 evalTopLevel pfx (Enum ns n v) =
   [CDeclExt $ CDecl [
       CStorageSpec (CTypedef un),CTypeSpec (CEnumType (enum (prefix pfx n) v) un)
@@ -78,7 +78,7 @@ evalTopLevel pfx (TypeDef ns name ty) = [CDeclExt $ typedef ty (prefix pfx name)
 evalTopLevel _ Import {} = [] -- TODO: handle
 evalTopLevel pfx (Alias ns (Just C) (retTy, from, args) to) = [CDeclExt $ alias retTy from args (prefix pfx to) ns]
 
-evalTopLevels :: [ToplPA] -> CTranslUnit
+evalTopLevels :: [ToplTC] -> CTranslUnit
 evalTopLevels xs = CTranslUnit (xs >>= evalTopLevel Nothing) un
 
 prependC :: CTranslUnit -> [CExtDecl] -> CTranslUnit
